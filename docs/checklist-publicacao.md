@@ -6,6 +6,8 @@ Marque uma caixa somente depois de confirmar a ação. **Você** responde por co
 
 ## 1. Contas e acessos que dependem de você
 
+Para encontrar cada item nos painéis, siga o [guia de obtenção dos acessos](./como-obter-acessos.md).
+
 - [x] **GitHub:** repositório `defxico/amazon-market-intelligence` publicado em `main`.
 - [ ] **Vercel:** entrar na conta ou equipe que será proprietária da aplicação e autorizar a integração com este repositório. Conceder acesso ao projeto para configurar variáveis, fazer deploy e consultar logs. Escolher um plano cujo uso e custo você aprove. Um domínio próprio é opcional; o endereço HTTPS fornecido pela Vercel pode servir para o primeiro teste.
 - [ ] **PostgreSQL/Prisma:** indicar ou criar um banco **de produção**, separado do banco local/de desenvolvimento. Autorizar criação de tabelas pela migração inicial e acesso a um usuário com as permissões necessárias. Disponibilizar URL de conexão com pool para a aplicação e URL direta para a migração. Decidir plano, região, backups e limite de gasto.
