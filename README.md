@@ -4,6 +4,8 @@ Private, API-first Amazon.com search intelligence implemented as one Next.js app
 
 This repository now contains the application scaffold, initial migration, deployment configuration, CI, and operations guide. A production deployment still needs your database, Upstash, provider accounts, Vercel project, approved collection rights, and secret values.
 
+Para autorizar as contas, custos e credenciais necessários à publicação, use o [checklist de publicação](./docs/checklist-publicacao.md).
+
 ## Product limits
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
