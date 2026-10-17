@@ -26,3 +26,6 @@ Thumbs.db
 !.vscode/extensions.json
 .vercel/
 *.tsbuildinfo
+.vercel
+.env*
+!.env.example
