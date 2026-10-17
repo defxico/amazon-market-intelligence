@@ -1,0 +1,48 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATA_MODE: fixture
+      APP_BASE_URL: https://example.invalid
+      QSTASH_TOKEN: ci-build-placeholder
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ami
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ami
+      RESEARCH_API_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      CRON_SECRET: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      UPSTASH_REDIS_REST_URL: https://ci.example.invalid
+      UPSTASH_REDIS_REST_TOKEN: ci-build-placeholder
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate Prisma schema
+        run: npx prisma validate
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Check environment shape
+        run: npm run env:check
+      - name: Build
+        run: npm run build

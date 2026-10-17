@@ -1,0 +1,50 @@
+{
+  "name": "amazon-market-intelligence",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0 <27"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "env:check": "node scripts/check-env.mjs",
+    "env:check:production": "node scripts/check-env.mjs --production",
+    "db:generate": "prisma generate",
+    "db:migrate": "node scripts/prisma-migrate.mjs dev",
+    "db:deploy": "node scripts/prisma-migrate.mjs deploy",
+    "db:status": "node scripts/prisma-migrate.mjs status",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@upstash/redis": "^1.39.0",
+    "@upstash/workflow": "^1.4.0",
+    "decimal.js": "^10.6.0",
+    "firecrawl": "^4.46.0",
+    "mcp-handler": "^2.3.0",
+    "next": "16.4.2",
+    "pg": "^8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "dotenv": "^17.3.1",
+    "eslint": "^9.39.2",
+    "prisma": "7.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.0"
+  }
+}

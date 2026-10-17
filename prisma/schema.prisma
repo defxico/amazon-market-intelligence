@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DISPATCH_FAILED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DISPATCHED
+  FAILED
+}
+
+enum ProviderUsageStatus {
+  RESERVED
+  SUCCEEDED
+  FAILED
+}
+
+model ResearchJob {
+  id                String   @id @default(cuid())
+  keyword           String   @db.VarChar(120)
+  marketplace       String   @default("amazon.com") @db.VarChar(32)
+  page              Int      @default(1)
+  requestedLimit    Int      @default(10)
+  source            String   @default("fixture") @db.VarChar(24)
+  sourceRightsProfile String? @db.VarChar(120)
+  synthetic         Boolean  @default(true)
+  status            JobStatus @default(QUEUED)
+  idempotencyKey    String?  @unique @db.VarChar(100)
+  workflowRunId     String?  @unique @db.VarChar(128)
+  errorMessage      String?  @db.VarChar(240)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  startedAt         DateTime? @db.Timestamptz(3)
+  completedAt       DateTime? @db.Timestamptz(3)
+  observations      ProductObservation[]
+  workflowOutbox    WorkflowOutbox?
+  providerUsage     ProviderUsage[]
+
+  @@index([keyword, marketplace, page, requestedLimit, status, completedAt])
+  @@index([status, createdAt])
+  @@map("research_jobs")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  marketplace  String   @db.VarChar(32)
+  asin         String   @db.VarChar(10)
+  title        String   @db.VarChar(500)
+  brand        String?  @db.VarChar(200)
+  detailUrl    String   @db.VarChar(300)
+  firstSeenAt  DateTime @default(now()) @db.Timestamptz(3)
+  observations ProductObservation[]
+
+  @@unique([marketplace, asin])
+  @@map("products")
+}
+
+model ProductObservation {
+  id          String   @id @default(cuid())
+  jobId       String
+  productId   String
+  position    Int?
+  price       Decimal? @db.Decimal(12, 2)
+  currency    String   @default("USD") @db.VarChar(3)
+  rating      Float?
+  reviewCount Int?
+  provider    String   @db.VarChar(24)
+  evidenceUrl String   @db.VarChar(500)
+  observedAt  DateTime @default(now()) @db.Timestamptz(3)
+  job         ResearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, productId])
+  @@index([productId, observedAt])
+  @@index([observedAt])
+  @@map("product_observations")
+}
+
+model WorkflowOutbox {
+  id             String      @id @default(cuid())
+  jobId          String      @unique
+  status         OutboxStatus @default(PENDING)
+  attempts       Int         @default(0)
+  nextAttemptAt  DateTime    @default(now()) @db.Timestamptz(3)
+  leaseUntil     DateTime?   @db.Timestamptz(3)
+  claimToken     String?     @db.VarChar(64)
+  lastError      String?     @db.VarChar(240)
+  dispatchedAt   DateTime?   @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  job            ResearchJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([status, leaseUntil])
+  @@map("workflow_outbox")
+}
+
+model ProviderUsage {
+  id          String              @id @default(cuid())
+  jobId       String?
+  requestId   String              @unique @db.VarChar(100)
+  provider    String              @db.VarChar(24)
+  status      ProviderUsageStatus @default(RESERVED)
+  errorCode   String?             @db.VarChar(80)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  completedAt DateTime?           @db.Timestamptz(3)
+  job         ResearchJob?        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([provider, createdAt])
+  @@index([status, createdAt])
+  @@map("provider_usage")
+}
+
+model EnrichmentEvidence {
+  id             String   @id @default(cuid())
+  sourceHost     String   @db.VarChar(253)
+  sourceUrl      String   @db.VarChar(2048)
+  retrievedAt    DateTime @default(now()) @db.Timestamptz(3)
+  excerpt        String   @db.VarChar(4000)
+  rightsProfile  String   @db.VarChar(120)
+  parserVersion  String   @default("firecrawl-markdown-v1") @db.VarChar(80)
+
+  @@index([sourceHost, retrievedAt])
+  @@index([retrievedAt])
+  @@map("enrichment_evidence")
+}
