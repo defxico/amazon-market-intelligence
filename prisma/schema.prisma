@@ -63,6 +63,11 @@ model Product {
   brand        String?  @db.VarChar(200)
   detailUrl    String   @db.VarChar(300)
   firstSeenAt  DateTime @default(now()) @db.Timestamptz(3)
+  manufacturerSearchBrief String? @db.VarChar(160)
+  manufacturerSearchRequestId String? @db.VarChar(100)
+  manufacturerSearchDiagnostics Json?
+  manufacturerSearchStatus String @default("NONE") @db.VarChar(16)
+  manufacturerSearchAt DateTime? @db.Timestamptz(3)
   observations ProductObservation[]
   manufacturerCandidates ManufacturerCandidate[]
   enrichmentEvidence EnrichmentEvidence[]
@@ -78,6 +83,10 @@ model ManufacturerCandidate {
   url                  String   @db.VarChar(2048)
   urlHash              String   @db.VarChar(64)
   snippet              String   @db.VarChar(2000)
+  productBrief         String?  @db.VarChar(160)
+  searchRequestId      String?  @db.VarChar(100)
+  contactUrl           String?  @db.VarChar(2048)
+  capabilityStatus     String   @default("LEGACY") @db.VarChar(32)
   source               String   @db.VarChar(40)
   rightsProfile        String   @db.VarChar(120)
   relationshipVerified Boolean  @default(false)

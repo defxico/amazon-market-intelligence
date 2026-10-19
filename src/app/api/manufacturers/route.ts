@@ -2,7 +2,7 @@ import { requireBearer } from '@/lib/auth';
 import { errors } from '@/lib/errors';
 import { errorResponse, getRequestId, jsonResponse, safeLog } from '@/lib/http';
 import { getSavedProductCandidates } from '@/lib/manufacturer-discovery-service';
-import { manufacturerSearchInput } from '@/lib/schemas';
+import { manufacturerReadInput } from '@/lib/schemas';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     const clientId = requireBearer(request);
     const asin = new URL(request.url).searchParams.get('asin');
-    const parsed = manufacturerSearchInput.safeParse({ asin });
+    const parsed = manufacturerReadInput.safeParse({ asin });
     if (!parsed.success) throw errors.validation('A valid saved Amazon ASIN is required.');
 
     return jsonResponse(await getSavedProductCandidates(parsed.data.asin, clientId), 200, requestId);

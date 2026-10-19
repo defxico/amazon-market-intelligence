@@ -6,7 +6,11 @@ dotenv.config({ quiet: true });
 const endpoint = new URL(process.env.MCP_URL ?? 'https://amazon-market-intelligence.vercel.app/api/mcp');
 const token = process.env.RESEARCH_API_KEY;
 const asin = (process.env.MCP_TEST_ASIN ?? 'B00MNXGSAI').trim().toUpperCase();
+const productBrief = (process.env.MCP_TEST_PRODUCT_BRIEF ?? '').trim();
 const runPaidSearch = process.argv.includes('--search');
+if (runPaidSearch && productBrief.length < 8) {
+  throw new Error('Set MCP_TEST_PRODUCT_BRIEF to describe the product before running a paid manufacturer search.');
+}
 
 if (!token) throw new Error('RESEARCH_API_KEY must be set in the server environment or local .env file.');
 if (!/^[A-Z0-9]{10}$/.test(asin)) throw new Error('MCP_TEST_ASIN must be a valid Amazon ASIN.');
@@ -40,7 +44,7 @@ try {
   if (runPaidSearch) {
     searchResult = parseToolResult(await client.callTool({
       name: 'search_saved_product_candidates',
-      arguments: { asin },
+      arguments: { asin, productBrief },
     }));
     if (searchResult.candidates.some((candidate) => candidate.relationshipVerified !== false)) {
       throw new Error('Search returned a candidate without relationshipVerified=false.');

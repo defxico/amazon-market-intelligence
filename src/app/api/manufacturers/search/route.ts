@@ -13,8 +13,8 @@ export async function POST(request: Request) {
   try {
     const clientId = requireBearer(request);
     const parsed = manufacturerSearchInput.safeParse(await readJson(request, 8_192));
-    if (!parsed.success) throw errors.validation('A valid saved Amazon ASIN is required.');
-    const result = await searchSavedProductManufacturers(parsed.data.asin, clientId);
+    if (!parsed.success) throw errors.validation('A valid saved Amazon ASIN and an 8–160-character product brief are required.');
+    const result = await searchSavedProductManufacturers(parsed.data.asin, parsed.data.productBrief, clientId);
     return jsonResponse({ ...result, requestId }, 200, requestId);
   } catch (error) {
     safeLog('manufacturer_search_error', {
