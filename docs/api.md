@@ -17,6 +17,8 @@ Base URL: `https://amazon-market-intelligence.vercel.app`. All research routes r
 
 `keyword` is 2–120 characters and normalized to lowercase. `marketplace` is `amazon.com`; `page` is 1–3; `limit` is 1–20. Omitted marketplace, page, and limit default to `amazon.com`, `1`, and `10`. An optional `Idempotency-Key` must contain 1–100 printable ASCII characters. Reuse the same key when retrying the same submission.
 
+New live jobs request Amazon's `Best Sellers` order for the keyword via SerpApi. This is Amazon's ranking, not a unit-sales count or search-volume measurement. Earlier jobs keep the `featured` search order in their saved metadata.
+
 The API creates a durable job and returns `202 Accepted`:
 
 ```json
@@ -27,7 +29,7 @@ The API creates a durable job and returns `202 Accepted`:
 }
 ```
 
-Poll `GET /api/research/{jobId}` until `SUCCEEDED`, `FAILED`, or `DISPATCH_FAILED`. The result includes `source`, `synthetic`, timestamps, and observed products. Treat `synthetic: true` as fixture data. Search positions and reviews are observations, not sales.
+Poll `GET /api/research/{jobId}` until `SUCCEEDED`, `FAILED`, or `DISPATCH_FAILED`. The result includes `searchRanking` (`best_sellers` or historical `featured`), `source`, `synthetic`, timestamps, and observed products. Treat `synthetic: true` as fixture data. Search positions and reviews are observations, not sales. Trend comparisons use only jobs with matching ranking methods.
 
 ## Saved Firecrawl candidates
 

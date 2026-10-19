@@ -52,7 +52,8 @@ export async function getTrends(keyword: string, clientId: string) {
     job.source === current.source
     && job.marketplace === current.marketplace
     && job.page === current.page
-    && job.requestedLimit === current.requestedLimit,
+    && job.requestedLimit === current.requestedLimit
+    && job.searchRanking === current.searchRanking
   );
   if (compatible.length < 2) {
     return {
@@ -111,7 +112,8 @@ export async function getTrends(keyword: string, clientId: string) {
   return {
     keyword,
     status: 'directional_only' as const,
-    historyCount: await db.researchJob.count({ where: { ...where, source: current.source } }),
+    historyCount: await db.researchJob.count({ where: { ...where, source: current.source, searchRanking: current.searchRanking } }),
+    searchRanking: current.searchRanking,
     methodologyVersion: 'rank_proxy_v1',
     confidence,
     source: latest.source,

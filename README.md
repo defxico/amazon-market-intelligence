@@ -9,6 +9,7 @@ Para autorizar as contas, custos e credenciais necessários à publicação, use
 ## Product limits
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
+- New live product research uses Amazon's `Best Sellers` sort for the submitted keyword through SerpApi (`s=exact-aware-popularity-rank`). It reports a ranking, not units sold or search volume. Jobs created before this change retain the `featured` label and are not mixed with Best Sellers jobs in trend comparisons.
 - Firecrawl candidate search is enabled in the current production deployment; the code default remains disabled. Each search returns at most five candidate pages for a saved, non-synthetic product. Search titles and snippets are unverified leads, never proof of a manufacturer. `GET /api/manufacturers?asin=...` reopens saved results without another provider call. Reading a selected candidate page still requires its HTTPS domain in `APPROVED_ENRICHMENT_DOMAINS`; `ENRICHMENT_RIGHTS_PROFILE` records the reviewed use profile, but does not grant rights by itself.
 - Trends compare saved observations and remain directional rank/price/review proxies. They are not sales, revenue, demand, or market-share measurements.
 - This is a single-tenant API key model. Use an OAuth/OIDC identity system and tenant isolation before offering it to unrelated customers.
@@ -59,8 +60,8 @@ Protected routes require `Authorization: Bearer $RESEARCH_API_KEY`. Responses us
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/health` | Anonymous liveness response; does not check dependencies |
-| `POST` | `/api/research` | Queue one keyword job; accepts `Idempotency-Key` |
-| `GET` | `/api/research/{jobId}` | Read status, source, synthetic marker, results, and provenance |
+| `POST` | `/api/research` | Queue one keyword job ordered by Amazon Best Sellers in live mode; accepts `Idempotency-Key` |
+| `GET` | `/api/research/{jobId}` | Read status, `searchRanking`, source, synthetic marker, results, and provenance |
 | `GET` | `/api/trends?keyword=...` | Compare compatible snapshots or return `insufficient_history` |
 | `GET` | `/api/manufacturers?asin=...` | Read up to five saved candidate pages without a provider request |
 | `POST` | `/api/manufacturers/search` | Search up to five web results for a saved, non-synthetic ASIN; candidates stay unverified |

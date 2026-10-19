@@ -3,6 +3,7 @@ import { getDb } from './db';
 import { requiredEnv } from './env';
 import { AppError, errors } from './errors';
 import { reserveProviderCall } from './rate-limit';
+import { buildAmazonSearchUrl, type SearchRanking } from './amazon-search-url';
 
 export type Listing = {
   asin: string;
@@ -15,7 +16,7 @@ export type Listing = {
   evidenceUrl: string;
 };
 
-type SearchInput = { keyword: string; marketplace: 'amazon.com'; page: number; limit: number };
+type SearchInput = { keyword: string; marketplace: 'amazon.com'; page: number; limit: number; ranking: SearchRanking };
 
 const fixtureListings: Listing[] = [
   { asin: 'B000000001', title: 'Synthetic Compact Blender One', position: 1, price: '24.99', rating: 4.2, reviewCount: 120, currency: 'USD', evidenceUrl: 'https://www.amazon.com/dp/B000000001' },
@@ -120,12 +121,7 @@ export async function fetchListings(input: SearchInput, source: string, jobId: s
   const requestId = await reserveProviderCall('serpapi');
   await getDb().providerUsage.create({ data: { requestId, provider: 'serpapi', jobId } });
   try {
-    const url = new URL('https://serpapi.com/search.json');
-    url.searchParams.set('engine', 'amazon');
-    url.searchParams.set('amazon_domain', input.marketplace);
-    url.searchParams.set('k', input.keyword);
-    url.searchParams.set('page', String(input.page));
-    url.searchParams.set('api_key', apiKey);
+    const url = buildAmazonSearchUrl(input, apiKey);
     const response = await fetch(url, {
       cache: 'no-store',
       signal: AbortSignal.timeout(20_000),
