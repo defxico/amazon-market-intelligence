@@ -5,7 +5,7 @@ import { verifyBearerToken } from '@/lib/auth';
 import { AppError, DispatchError } from '@/lib/errors';
 import { getResearch, createResearch } from '@/lib/research-service';
 import { getSavedProductCandidates, searchSavedProductManufacturers } from '@/lib/manufacturer-discovery-service';
-import { manufacturerSearchInput, researchInput, trendKeywordInput, jobIdInput } from '@/lib/schemas';
+import { manufacturerReadInput, manufacturerSearchInput, researchInput, trendKeywordInput, jobIdInput } from '@/lib/schemas';
 import { getTrends } from '@/lib/trend-service';
 
 export const runtime = 'nodejs';
@@ -65,12 +65,12 @@ const handler = createMcpHandler((server) => {
 
   server.registerTool('search_saved_product_candidates', {
     title: 'Search candidates for a saved product',
-    description: 'Find potential private-label, OEM, or contract manufacturers for products similar to a saved, successfully observed non-synthetic Amazon product. Uses one bounded Firecrawl search, excludes common retail marketplaces and pages without manufacturing signals, returns at most five unverified leads, and consumes the shared Firecrawl budget.',
+    description: 'Search the open web for potential third-party private-label, OEM, or contract manufacturers for an explicitly described product category. Requires a saved, successfully observed non-synthetic Amazon product and productBrief. Excludes common retail/social sites, directories, brand pages, category mismatches, and pages without B2B manufacturing signals. Returns at most five search-evidence leads and consumes the shared Firecrawl budget; it does not verify capacity or send RFQs.',
     inputSchema: manufacturerSearchInput,
-  }, async ({ asin }, context) => {
+  }, async ({ asin, productBrief }, context) => {
     try {
       const clientId = context.http?.authInfo?.clientId ?? 'private-api-client';
-      const result = await searchSavedProductManufacturers(asin, clientId);
+      const result = await searchSavedProductManufacturers(asin, productBrief, clientId);
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (error) {
       return safeToolError(error);
@@ -79,8 +79,8 @@ const handler = createMcpHandler((server) => {
 
   server.registerTool('get_saved_product_candidates', {
     title: 'Read saved product candidates',
-    description: 'Read up to five already persisted potential manufacturer leads for a saved ASIN without making another provider request.',
-    inputSchema: manufacturerSearchInput,
+    description: 'Read the latest screened manufacturer leads and search diagnostics for a saved ASIN without making another provider request. Earlier unscreened records appear separately.',
+    inputSchema: manufacturerReadInput,
   }, async ({ asin }, context) => {
     try {
       const clientId = context.http?.authInfo?.clientId ?? 'private-api-client';
@@ -92,7 +92,7 @@ const handler = createMcpHandler((server) => {
   });
 }, {
   serverInfo: { name: 'amazon-market-intelligence', version: '2.0.0' },
-  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Select a saved, non-synthetic product before using search_saved_product_candidates; it consumes Firecrawl budget and searches for similar-product private-label, OEM, or contract manufacturing capacity. Results only advertise manufacturing signals in search text; review each site to verify the company and product fit. Use get_saved_product_candidates to reopen saved leads without another provider request. Do not treat synthetic fixture data as real research. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
+  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Select a saved, non-synthetic product and provide productBrief describing exactly what you want manufactured before calling search_saved_product_candidates; this paid tool makes one Firecrawl web search and returns up to five leads with category and third-party manufacturing signals. SEARCH_EVIDENCE is still unverified; use the approved page-enrichment workflow to inspect a source before treating it as page evidence. Use get_saved_product_candidates to reopen latest leads and diagnostics without another provider request. Earlier unscreened records are separate. Do not treat synthetic fixture data as real research. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
   verboseLogs: false,
 });
 

@@ -33,12 +33,28 @@ Poll `GET /api/research/{jobId}` until `SUCCEEDED`, `FAILED`, or `DISPATCH_FAILE
 
 ## Saved Firecrawl candidates
 
-`GET /api/manufacturers?asin=B00MNXGSAI` reads up to five saved candidates. It never calls Firecrawl, so refreshes and reopened UI sessions do not consume credits. The ASIN must already be saved by a product observation.
+`GET /api/manufacturers?asin=B00MNXGSAI` reads up to five screened candidates matching the most recent product brief, plus up to five older unscreened records under `legacyCandidates`. It includes the latest search status, brief, request ID, diagnostics, and time. It never calls Firecrawl, so refreshes and reopened UI sessions do not consume credits. The ASIN must already be saved by a product observation.
 
 ```json
 {
   "asin": "B00MNXGSAI",
   "title": "Saved Amazon product title",
+  "productBrief": "chocolate protein bar for private label",
+  "searchStatus": "SUCCEEDED",
+  "providerUsageRequestId": "provider-request-id",
+  "searchedAt": "2026-10-19T12:00:00.000Z",
+  "diagnostics": {
+    "returned": 10,
+    "rejectedInvalid": 0,
+    "rejectedRetailOrSocial": 2,
+    "rejectedThirdParty": 1,
+    "rejectedBrandPage": 0,
+    "rejectedCategory": 3,
+    "rejectedNoB2BService": 2,
+    "rejectedDuplicate": 1,
+    "capped": 0,
+    "saved": 1
+  },
   "candidates": [
     {
       "id": "candidate-id",
@@ -46,19 +62,24 @@ Poll `GET /api/research/{jobId}` until `SUCCEEDED`, `FAILED`, or `DISPATCH_FAILE
       "title": "Search result title",
       "url": "https://example.com/product",
       "snippet": "Search result excerpt",
-      "source": "firecrawl.search.manufacturer-v1",
+      "productBrief": "chocolate protein bar for private label",
+      "contactUrl": null,
+      "capabilityStatus": "SEARCH_EVIDENCE",
+      "source": "firecrawl.search.manufacturer-v2",
       "relationshipVerified": false,
       "firstSeenAt": "2026-10-19T12:00:00.000Z",
       "lastSeenAt": "2026-10-19T12:00:00.000Z"
     }
   ],
-      "warning": "Search-result pages mention manufacturing capabilities; company identity and product fit are unverified."
+  "previousCandidates": [],
+  "legacyCandidates": [],
+  "warning": "Search evidence does not confirm production capacity, quality, MOQ, availability, or a relationship to the Amazon brand."
 }
 ```
 
-`POST /api/manufacturers/search` is the explicit paid operation. It accepts `{ "asin": "B00MNXGSAI" }`, requires a saved product with a successful non-synthetic observation, and uses the product title without its brand or ASIN to search for similar-product private-label, OEM, and contract manufacturing capacity. It excludes common retail marketplace domains and results without manufacturing signals, then returns up to five unverified leads. It does not scrape result pages. The shared Firecrawl daily budget and per-client rate limit apply.
+`POST /api/manufacturers/search` is the explicit paid operation. It accepts `{ "asin": "B00MNXGSAI", "productBrief": "chocolate protein bar for private label" }`, requires a saved product with a successful non-synthetic observation, and uses the buyer's brief rather than inferring category from the Amazon title or research keyword. The brief must be 8–160 characters and cannot include an URL or ASIN. Firecrawl receives one web search with a limit of ten results and exclusions for common retailers, social sites, and directories. Local screening also requires a category token and a private-label/OEM/contract-manufacturing signal, rejects known third-party pages and pages for the Amazon product's brand, deduplicates by company host, and returns up to five leads. A zero result is valid and includes rejection counts. The shared Firecrawl daily budget and per-client rate limit apply.
 
-The response includes the same candidate fields plus `providerUsageRequestId`, `creditsUsed`, `source`, `rightsProfile`, a warning, and the API `requestId`. New candidates use source `firecrawl.search.manufacturer-v1`; earlier records may retain `firecrawl.search` and were not screened by this filter. New candidates match manufacturing terms in search titles, snippets, or URLs; this does not confirm a real factory, its production capacity, or its fit for the selected product. `creditsUsed` is the observed change in the Firecrawl account's remaining-credit count and may be `null` if the provider usage snapshots are unavailable or changed concurrently. The provider request uses one attempt; it is not automatically retried.
+The response includes `diagnostics` (`returned`, counts rejected by reason, and `saved`), `providerUsageRequestId`, `creditsUsed`, `rightsProfile`, a warning, and the API `requestId`. `SEARCH_EVIDENCE` means only the search result title/snippet matched the brief and B2B signal. Use `POST /api/enrich` with `{ "candidateId": "..." }` to inspect a selected candidate's page; its host must be in `APPROVED_ENRICHMENT_DOMAINS`. That page read updates capability status to `PAGE_EVIDENCE` or `PAGE_NOT_CONFIRMED` based on the saved brief. Neither state confirms capacity, quality, MOQ, availability, or a relationship to the Amazon brand. Earlier records with status `LEGACY` were not screened and never count as new leads. `creditsUsed` is the observed change in the Firecrawl account's remaining-credit count and may be `null` if provider snapshots are unavailable or changed concurrently. The provider search uses one attempt; it is not automatically retried.
 
 ## Errors
 
@@ -83,9 +104,9 @@ Connect an MCP client to `https://amazon-market-intelligence.vercel.app/api/mcp`
 - `research_products({ keyword, marketplace?, page?, limit? })`
 - `get_research({ jobId })`
 - `get_trends({ keyword })`
-- `search_saved_product_candidates({ asin })` — paid Firecrawl search, same validation, rate limit, provider budget, and persistence as REST.
+- `search_saved_product_candidates({ asin, productBrief })` — paid Firecrawl search, same validation, rate limit, provider budget, and persistence as REST.
 - `get_saved_product_candidates({ asin })` — read saved results without a provider call.
 
-Tool results return JSON in MCP text content. Candidate names are search-result titles, and every candidate remains explicitly unverified. The MCP search and REST search use the same service and database; the MCP client smoke script can optionally run one paid search with `npm run smoke:mcp -- --search`. Without `--search`, it only lists tools and reads saved candidates.
+Tool results return JSON in MCP text content. Candidate names are search-result titles, and every candidate remains explicitly unverified. The MCP search and REST search use the same service and database; the MCP client smoke script can optionally run one paid search with `MCP_TEST_ASIN` and `MCP_TEST_PRODUCT_BRIEF` set, then `npm run smoke:mcp -- --search`. Without `--search`, it only lists tools and reads saved candidates.
 
 The REST-only `POST /api/enrich` accepts either `{ "url": "https://..." }` or `{ "candidateId": "..." }`. Selected-page scraping retains the existing `APPROVED_ENRICHMENT_DOMAINS` allowlist and rights checks. No enrichment tool is exposed over MCP.

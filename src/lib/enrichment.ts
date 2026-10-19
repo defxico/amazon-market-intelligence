@@ -3,13 +3,14 @@ import { Firecrawl } from 'firecrawl';
 import { getDb } from './db';
 import { validateEnrichmentUrl, allowlistedRoot } from './enrichment-url-server';
 import { AppError, errors } from './errors';
+import { classifyManufacturerPageEvidence } from './manufacturer-discovery';
 import { reserveProviderCall } from './rate-limit';
 
 const MAX_EXCERPT_LENGTH = 4_000;
 
 export async function enrichApprovedUrl(
   rawUrl: string,
-  association?: { productId: string; candidateId: string },
+  association?: { productId: string; candidateId: string; productBrief?: string },
 ) {
   const validated = validateEnrichmentUrl(rawUrl);
   if (!validated) throw errors.validation('The HTTPS domain is not approved for enrichment.');
@@ -40,6 +41,9 @@ export async function enrichApprovedUrl(
       ? result.markdown.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim()
       : '';
     const excerpt = markdown.slice(0, MAX_EXCERPT_LENGTH);
+    const capabilityStatus = association?.productBrief
+      ? classifyManufacturerPageEvidence(markdown.slice(0, 20_000), association.productBrief)
+      : null;
     const retrievedAt = new Date();
     const evidence = await getDb().$transaction(async (transaction) => {
       const saved = await transaction.enrichmentEvidence.create({
@@ -49,10 +53,16 @@ export async function enrichApprovedUrl(
           retrievedAt,
           excerpt,
           rightsProfile,
-          ...(association ?? {}),
+          ...(association ? { productId: association.productId, candidateId: association.candidateId } : {}),
         },
         select: { id: true },
       });
+      if (association && capabilityStatus) {
+        await transaction.manufacturerCandidate.update({
+          where: { id: association.candidateId },
+          data: { capabilityStatus },
+        });
+      }
       await transaction.providerUsage.update({
         where: { requestId },
         data: { status: 'SUCCEEDED', completedAt: new Date() },
@@ -68,6 +78,7 @@ export async function enrichApprovedUrl(
       rightsProfile,
       excerpt,
       truncated: markdown.length > MAX_EXCERPT_LENGTH,
+      ...(capabilityStatus ? { capabilityStatus } : {}),
     };
   } catch (error) {
     await getDb().providerUsage.update({

@@ -10,7 +10,7 @@ Para autorizar as contas, custos e credenciais necessários à publicação, use
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
 - New live product research uses Amazon's `Best Sellers` sort for the submitted keyword through SerpApi (`s=exact-aware-popularity-rank`). It reports a ranking, not units sold or search volume. Jobs created before this change retain the `featured` label and are not mixed with Best Sellers jobs in trend comparisons.
-- Firecrawl search targets companies advertising private-label, OEM, or contract manufacturing for products similar to a saved, non-synthetic Amazon product. It excludes common retail marketplaces and search pages without manufacturing signals, then saves up to five leads with source `firecrawl.search.manufacturer-v1`. Older saved results remain available as `firecrawl.search` and are not retroactively screened. Search snippets do not prove factory identity, production capacity, or product fit. `GET /api/manufacturers?asin=...` reopens saved leads without another provider call. Reading a selected page still follows the existing domain allowlist.
+- Firecrawl search requires an explicit product brief with a saved, non-synthetic Amazon ASIN. It searches up to ten web results for private-label, OEM, or contract manufacturing, screens for product-category and B2B signals, and saves up to five `SEARCH_EVIDENCE` leads with source `firecrawl.search.manufacturer-v2`. Diagnostics explain how many hits passed or failed screening. Search evidence does not confirm a company's capacity, quality, MOQ, or availability. `GET /api/manufacturers?asin=...` reopens screened leads and diagnostics without another provider call; older results appear separately as `legacyCandidates`. Reading a selected page still follows the existing domain allowlist and updates capability status to `PAGE_EVIDENCE` or `PAGE_NOT_CONFIRMED`.
 - Trends compare saved observations and remain directional rank/price/review proxies. They are not sales, revenue, demand, or market-share measurements.
 - This is a single-tenant API key model. Use an OAuth/OIDC identity system and tenant isolation before offering it to unrelated customers.
 - Commercial production use requires a plan that permits commercial traffic and separate budget controls for every vendor.
@@ -64,7 +64,7 @@ Protected routes require `Authorization: Bearer $RESEARCH_API_KEY`. Responses us
 | `GET` | `/api/research/{jobId}` | Read status, `searchRanking`, source, synthetic marker, results, and provenance |
 | `GET` | `/api/trends?keyword=...` | Compare compatible snapshots or return `insufficient_history` |
 | `GET` | `/api/manufacturers?asin=...` | Read up to five saved candidate pages without a provider request |
-| `POST` | `/api/manufacturers/search` | Search up to five web results for a saved, non-synthetic ASIN; candidates stay unverified |
+| `POST` | `/api/manufacturers/search` | Search up to ten web results for a saved ASIN and explicit product brief; returns up to five screened leads |
 | `POST` | `/api/enrich` | Fetch one approved public-site excerpt by URL or saved `candidateId` |
 | `GET`, `POST` | `/api/mcp` | Authenticated MCP tools: `research_products`, `get_research`, `get_trends`, `search_saved_product_candidates`, `get_saved_product_candidates` |
 

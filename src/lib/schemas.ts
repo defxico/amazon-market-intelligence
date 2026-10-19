@@ -17,8 +17,15 @@ export const enrichmentInput = z.union([
   z.object({ candidateId: z.string().min(8).max(64).regex(/^[a-z0-9]+$/) }).strict(),
 ]);
 
-export const manufacturerSearchInput = z.object({
+export const manufacturerReadInput = z.object({
   asin: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{10}$/),
+}).strict();
+
+export const manufacturerSearchInput = manufacturerReadInput.extend({
+  productBrief: z.string().trim().min(8).max(160)
+    .refine((value) => !/https?:\/\/|www\.|\b[A-Z0-9]{10}\b/i.test(value), {
+      message: 'Describe the product category without a URL or ASIN.',
+    }),
 }).strict();
 
 export const trendKeywordInput = z.string().trim().min(2).max(120)

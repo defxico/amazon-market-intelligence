@@ -4,8 +4,8 @@ const endpoints = [
   { method: 'POST', path: '/api/research', description: 'Queue a bounded keyword observation.' },
   { method: 'GET', path: '/api/research/{jobId}', description: 'Read job status and normalized results.' },
   { method: 'GET', path: '/api/trends?keyword=…', description: 'Compare compatible saved snapshots.' },
-  { method: 'GET', path: '/api/manufacturers?asin=…', description: 'Read up to five saved Firecrawl candidates without another provider call.' },
-  { method: 'POST', path: '/api/manufacturers/search', description: 'Run one bounded Firecrawl search for a saved non-synthetic product; candidates remain unverified.' },
+  { method: 'GET', path: '/api/manufacturers?asin=…', description: 'Read latest screened leads, diagnostics, and earlier results without another provider call.' },
+  { method: 'POST', path: '/api/manufacturers/search', description: 'Run one bounded Firecrawl search for a saved non-synthetic product and explicit product brief; returns up to five screened leads with evidence status.' },
   { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from an approved domain or selected candidate.' },
 ];
 
