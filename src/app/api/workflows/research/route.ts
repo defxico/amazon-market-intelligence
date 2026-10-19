@@ -31,6 +31,7 @@ export const { POST } = serve<WorkflowPayload>(
         page: found.page,
         limit: found.requestedLimit,
         source: found.source,
+        ranking: found.searchRanking,
         workflowRunId: found.workflowRunId,
       };
     });
@@ -42,6 +43,7 @@ export const { POST } = serve<WorkflowPayload>(
         marketplace: job.marketplace,
         page: job.page,
         limit: job.limit,
+        ranking: job.ranking === 'best_sellers' ? 'best_sellers' : 'featured',
       }, job.source, job.id),
     );
 

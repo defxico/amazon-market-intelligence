@@ -35,6 +35,7 @@ model ResearchJob {
   page              Int      @default(1)
   requestedLimit    Int      @default(10)
   source            String   @default("fixture") @db.VarChar(24)
+  searchRanking     String   @default("featured") @db.VarChar(24)
   sourceRightsProfile String? @db.VarChar(120)
   synthetic         Boolean  @default(true)
   status            JobStatus @default(QUEUED)

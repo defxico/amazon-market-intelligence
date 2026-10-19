@@ -19,6 +19,45 @@ export type ManufacturerCandidateDraft = {
   relationshipVerified: false;
 };
 
+type SavedManufacturerCandidate = {
+  id: string;
+  name: string;
+  url: string;
+  snippet: string;
+  source: string;
+  relationshipVerified: boolean;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+};
+
+export function calculateFirecrawlCreditsUsed(before: number | null, after: number | null): number | null {
+  if (before === null || after === null || after > before) return null;
+  return before - after;
+}
+
+export function serializeSavedProductCandidates(product: {
+  asin: string;
+  title: string;
+  candidates: SavedManufacturerCandidate[];
+}) {
+  return {
+    asin: product.asin,
+    title: product.title,
+    candidates: product.candidates.slice(0, 5).map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      title: candidate.name,
+      url: candidate.url,
+      snippet: candidate.snippet,
+      source: candidate.source,
+      relationshipVerified: candidate.relationshipVerified,
+      firstSeenAt: candidate.firstSeenAt.toISOString(),
+      lastSeenAt: candidate.lastSeenAt.toISOString(),
+    })),
+    warning: 'Search-result pages are candidates; their relationship to this ASIN is unverified.',
+  };
+}
+
 function cleanText(value: unknown, maximum: number): string {
   return typeof value === 'string'
     ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maximum)
