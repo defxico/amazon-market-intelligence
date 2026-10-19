@@ -10,5 +10,5 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
-  globalIgnores(['.next/**', 'generated/**', 'node_modules/**', 'next-env.d.ts']),
+  globalIgnores(['.next/**', 'generated/**', 'node_modules/**', 'next-env.d.ts', 'demo-ui/**']),
 ]);

@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { verifyBearerToken } from '@/lib/auth';
 import { AppError, DispatchError } from '@/lib/errors';
 import { getResearch, createResearch } from '@/lib/research-service';
-import { researchInput, trendKeywordInput, jobIdInput } from '@/lib/schemas';
+import { getSavedProductCandidates, searchSavedProductManufacturers } from '@/lib/manufacturer-discovery-service';
+import { manufacturerSearchInput, researchInput, trendKeywordInput, jobIdInput } from '@/lib/schemas';
 import { getTrends } from '@/lib/trend-service';
 
 export const runtime = 'nodejs';
@@ -61,9 +62,37 @@ const handler = createMcpHandler((server) => {
       return safeToolError(error);
     }
   });
+
+  server.registerTool('search_saved_product_candidates', {
+    title: 'Search candidates for a saved product',
+    description: 'Use one bounded Firecrawl web search for a saved, successfully observed non-synthetic Amazon product. Returns at most five unverified candidate pages; this operation consumes the shared Firecrawl budget.',
+    inputSchema: manufacturerSearchInput,
+  }, async ({ asin }, context) => {
+    try {
+      const clientId = context.http?.authInfo?.clientId ?? 'private-api-client';
+      const result = await searchSavedProductManufacturers(asin, clientId);
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    } catch (error) {
+      return safeToolError(error);
+    }
+  });
+
+  server.registerTool('get_saved_product_candidates', {
+    title: 'Read saved product candidates',
+    description: 'Read up to five already persisted Firecrawl search candidates for a saved ASIN without making another provider request.',
+    inputSchema: manufacturerSearchInput,
+  }, async ({ asin }, context) => {
+    try {
+      const clientId = context.http?.authInfo?.clientId ?? 'private-api-client';
+      const result = await getSavedProductCandidates(asin, clientId);
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    } catch (error) {
+      return safeToolError(error);
+    }
+  });
 }, {
   serverInfo: { name: 'amazon-market-intelligence', version: '2.0.0' },
-  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Do not treat synthetic fixture data as real research. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
+  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Use search_saved_product_candidates only after selecting a saved, non-synthetic product because it consumes Firecrawl budget. Use get_saved_product_candidates to reopen saved results without another provider request. Do not treat synthetic fixture data as real research. Candidate pages are not verified manufacturers. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
   verboseLogs: false,
 });
 

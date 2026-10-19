@@ -4,7 +4,8 @@ const endpoints = [
   { method: 'POST', path: '/api/research', description: 'Queue a bounded keyword observation.' },
   { method: 'GET', path: '/api/research/{jobId}', description: 'Read job status and normalized results.' },
   { method: 'GET', path: '/api/trends?keyword=…', description: 'Compare compatible saved snapshots.' },
-  { method: 'POST', path: '/api/manufacturers/search', description: 'Find up to five unverified pages for a saved product; disabled until approved.' },
+  { method: 'GET', path: '/api/manufacturers?asin=…', description: 'Read up to five saved Firecrawl candidates without another provider call.' },
+  { method: 'POST', path: '/api/manufacturers/search', description: 'Run one bounded Firecrawl search for a saved non-synthetic product; candidates remain unverified.' },
   { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from an approved domain or selected candidate.' },
 ];
 
@@ -18,6 +19,7 @@ export default function Home() {
         </Link>
         <div className="topbar-right">
           <span className="private-pill"><span className="status-dot" /> Private API</span>
+          <a className="docs-link" href="https://ami-live-research-demo.gipyware-0848.chatgpt.site/" target="_blank" rel="noreferrer">Open demo <span aria-hidden="true">↗</span></a>
           <a className="docs-link" href="#api">API reference <span aria-hidden="true">↗</span></a>
         </div>
       </header>
@@ -103,7 +105,7 @@ export default function Home() {
             <h3>Same research.<br />A tool call away.</h3>
             <p>Connect an MCP host to the same authenticated operations over Streamable HTTP.</p>
             <div className="mcp-path"><span>ENDPOINT</span><code>/api/mcp</code></div>
-            <div className="mcp-tools"><span>3 tools</span><span>Bearer auth</span><span>Stateless</span></div>
+            <div className="mcp-tools"><span>5 tools</span><span>Bearer auth</span><span>Stateless</span></div>
           </aside>
         </div>
       </section>

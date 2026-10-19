@@ -1,15 +1,15 @@
 # Amazon Market Intelligence
 
-Private, API-first Amazon.com search intelligence implemented as one Next.js application for Vercel deployment. REST and stateless Streamable HTTP MCP expose the same service logic. Prisma Postgres stores durable jobs and source-attributed observations; Upstash Redis enforces request and provider budgets; QStash/Workflow runs paid provider calls asynchronously.
+Private, API-first Amazon.com search intelligence. The production REST API and stateless Streamable HTTP MCP share service logic. Prisma Postgres stores durable jobs and source-attributed observations; Upstash Redis enforces request and provider budgets; QStash/Workflow runs provider calls asynchronously.
 
-This repository now contains the application scaffold, initial migration, deployment configuration, CI, and operations guide. A production deployment still needs your database, Upstash, provider accounts, Vercel project, approved collection rights, and secret values.
+The API is live at `https://amazon-market-intelligence.vercel.app`. The separate owner-private [live research demonstration](https://ami-live-research-demo.gipyware-0848.chatgpt.site/) uses the REST API through server-side routes; its source is [amazon-market-intelligence-demo](https://github.com/defxico/amazon-market-intelligence-demo). [API and MCP contract](./docs/api.md) documents request shapes and limits.
 
 Para autorizar as contas, custos e credenciais necessários à publicação, use o [checklist de publicação](./docs/checklist-publicacao.md).
 
 ## Product limits
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
-- Firecrawl search is disabled by default (`FIRECRAWL_SEARCH_ENABLED=false`). After approval, it can return up to five candidate pages per call for a saved, non-synthetic product, with a shared limit of five search/enrichment calls per hour per bearer client. Search titles and snippets are unverified leads, never proof of a manufacturer. Reading a selected candidate page still requires its HTTPS domain in `APPROVED_ENRICHMENT_DOMAINS`; `ENRICHMENT_RIGHTS_PROFILE` records the reviewed use profile, but does not grant rights by itself.
+- Firecrawl candidate search is enabled in the current production deployment; the code default remains disabled. Each search returns at most five candidate pages for a saved, non-synthetic product. Search titles and snippets are unverified leads, never proof of a manufacturer. `GET /api/manufacturers?asin=...` reopens saved results without another provider call. Reading a selected candidate page still requires its HTTPS domain in `APPROVED_ENRICHMENT_DOMAINS`; `ENRICHMENT_RIGHTS_PROFILE` records the reviewed use profile, but does not grant rights by itself.
 - Trends compare saved observations and remain directional rank/price/review proxies. They are not sales, revenue, demand, or market-share measurements.
 - This is a single-tenant API key model. Use an OAuth/OIDC identity system and tenant isolation before offering it to unrelated customers.
 - Commercial production use requires a plan that permits commercial traffic and separate budget controls for every vendor.
@@ -62,9 +62,10 @@ Protected routes require `Authorization: Bearer $RESEARCH_API_KEY`. Responses us
 | `POST` | `/api/research` | Queue one keyword job; accepts `Idempotency-Key` |
 | `GET` | `/api/research/{jobId}` | Read status, source, synthetic marker, results, and provenance |
 | `GET` | `/api/trends?keyword=...` | Compare compatible snapshots or return `insufficient_history` |
+| `GET` | `/api/manufacturers?asin=...` | Read up to five saved candidate pages without a provider request |
 | `POST` | `/api/manufacturers/search` | Search up to five web results for a saved, non-synthetic ASIN; candidates stay unverified |
 | `POST` | `/api/enrich` | Fetch one approved public-site excerpt by URL or saved `candidateId` |
-| `GET`, `POST` | `/api/mcp` | Authenticated MCP tools: `research_products`, `get_research`, `get_trends` |
+| `GET`, `POST` | `/api/mcp` | Authenticated MCP tools: `research_products`, `get_research`, `get_trends`, `search_saved_product_candidates`, `get_saved_product_candidates` |
 
 Search only accepts an ASIN already saved from a successful non-synthetic observation. Replace the placeholder ASIN with a saved one. Pass one returned candidate's `id` to `/api/enrich` to read its page; this still requires the candidate domain to be approved:
 
@@ -99,7 +100,7 @@ Production configuration requires:
 - `RESEARCH_API_KEY`, `CRON_SECRET`, Upstash Redis credentials, QStash token and both signing keys.
 - `DATA_MODE=fixture` until SerpApi collection, storage, and commercial-use rights are approved. Then set `SERPAPI_API_KEY` and a conservative daily budget.
 - `SERPAPI_RIGHTS_PROFILE` names the reviewed live-data use profile and is persisted with each job. It is an audit label, not a substitute for the rights review.
-- Firecrawl search requires `FIRECRAWL_SEARCH_ENABLED=true`, an approved search/snippet use profile, and a conservative `MAX_FIRECRAWL_CALLS_PER_DAY`; leave it `false` until approved. The same daily budget covers search and scrape calls. `ENRICHMENT_RIGHTS_PROFILE` is an audit label, not a substitute for rights approval.
+- Firecrawl search requires `FIRECRAWL_SEARCH_ENABLED=true`, an approved search/snippet use profile, and a conservative `MAX_FIRECRAWL_CALLS_PER_DAY`; this production deployment has search enabled. The same daily budget covers search and scrape calls. `ENRICHMENT_RIGHTS_PROFILE` is an audit label, not a substitute for rights approval.
 - `APPROVED_ENRICHMENT_DOMAINS` is required for selected-page scraping. The allowlist and page-content use/storage rights must be approved before scraping. Search results never trigger a scrape or crawl automatically.
 - `QSTASH_DEV` unset in production. Apply migrations with `npm run db:deploy` before routing traffic to a release that requires them.
 
