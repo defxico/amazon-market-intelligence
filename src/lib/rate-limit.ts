@@ -66,7 +66,7 @@ export async function permitRead(clientId: string): Promise<boolean> {
 }
 
 export async function permitEnrichment(clientId: string): Promise<boolean> {
-  return takeSlidingWindow(`ami:rate:enrichment:${clientId}`, 5, 60 * 60_000);
+  return takeSlidingWindow(`ami:rate:enrichment:${clientId}`, 20, 60 * 60_000);
 }
 
 export async function reserveProviderCall(provider: 'serpapi' | 'firecrawl'): Promise<string> {
