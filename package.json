@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test src/lib/manufacturer-discovery.test.ts",
     "env:check": "node scripts/check-env.mjs",
     "env:check:production": "node scripts/check-env.mjs --production",
     "db:generate": "prisma generate",

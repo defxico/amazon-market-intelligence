@@ -77,8 +77,18 @@ if (production) {
 
 const enrichmentEnabled = Boolean(process.env.FIRECRAWL_API_KEY?.trim());
 if (enrichmentEnabled) {
-  if (!process.env.APPROVED_ENRICHMENT_DOMAINS?.trim()) issues.push('APPROVED_ENRICHMENT_DOMAINS is required when Firecrawl is enabled');
   if (!process.env.ENRICHMENT_RIGHTS_PROFILE?.trim()) issues.push('ENRICHMENT_RIGHTS_PROFILE is required when Firecrawl is enabled');
+}
+
+if (process.env.FIRECRAWL_SEARCH_ENABLED !== undefined
+  && !['true', 'false'].includes(process.env.FIRECRAWL_SEARCH_ENABLED)) {
+  issues.push('FIRECRAWL_SEARCH_ENABLED must be true or false');
+}
+if (process.env.FIRECRAWL_SEARCH_ENABLED === 'true' && !enrichmentEnabled) {
+  issues.push('FIRECRAWL_API_KEY is required when Firecrawl search is enabled');
+}
+if (process.env.FIRECRAWL_SEARCH_ENABLED === 'true' && !process.env.ENRICHMENT_RIGHTS_PROFILE?.trim()) {
+  issues.push('ENRICHMENT_RIGHTS_PROFILE is required when Firecrawl search is enabled');
 }
 
 for (const [name, fallback, maximum, minimum] of [

@@ -4,7 +4,8 @@ const endpoints = [
   { method: 'POST', path: '/api/research', description: 'Queue a bounded keyword observation.' },
   { method: 'GET', path: '/api/research/{jobId}', description: 'Read job status and normalized results.' },
   { method: 'GET', path: '/api/trends?keyword=…', description: 'Compare compatible saved snapshots.' },
-  { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from an approved public domain.' },
+  { method: 'POST', path: '/api/manufacturers/search', description: 'Find up to five unverified pages for a saved product; disabled until approved.' },
+  { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from an approved domain or selected candidate.' },
 ];
 
 export default function Home() {

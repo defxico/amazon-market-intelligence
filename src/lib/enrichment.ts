@@ -1,59 +1,16 @@
 import 'server-only';
-import { isIP } from 'node:net';
 import { Firecrawl } from 'firecrawl';
 import { getDb } from './db';
+import { validateEnrichmentUrl, allowlistedRoot } from './enrichment-url-server';
 import { AppError, errors } from './errors';
 import { reserveProviderCall } from './rate-limit';
 
 const MAX_EXCERPT_LENGTH = 4_000;
 
-function approvedDomains(): string[] {
-  return (process.env.APPROVED_ENRICHMENT_DOMAINS ?? '')
-    .split(',')
-    .map((domain) => domain.trim().toLowerCase().replace(/^\.+|\.+$/g, ''))
-    .filter((domain) => domain.length > 0 && !domain.includes('*') && !isIP(domain));
-}
-
-function hostnameIsPublic(hostname: string): boolean {
-  return !isIP(hostname)
-    && hostname.includes('.')
-    && hostname !== 'localhost'
-    && !hostname.endsWith('.localhost')
-    && !hostname.endsWith('.local')
-    && !hostname.endsWith('.internal')
-    && !hostname.endsWith('.test')
-    && !hostname.endsWith('.invalid')
-    && !hostname.endsWith('.onion');
-}
-
-export function validateEnrichmentUrl(raw: string): { url: URL; sourceHost: string } | null {
-  if (raw.length > 2_048 || /[\u0000-\u001f\u007f]/.test(raw)) return null;
-  try {
-    const url = new URL(raw);
-    const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
-    const allowed = approvedDomains();
-    if (
-      url.protocol !== 'https:'
-      || url.username
-      || url.password
-      || url.port
-      || !hostnameIsPublic(hostname)
-      || !allowed.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
-    ) return null;
-    url.hash = '';
-    return { url, sourceHost: hostname };
-  } catch {
-    return null;
-  }
-}
-
-function allowlistedRoot(hostname: string): string | null {
-  return approvedDomains()
-    .filter((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
-    .sort((left, right) => right.length - left.length)[0] ?? null;
-}
-
-export async function enrichApprovedUrl(rawUrl: string) {
+export async function enrichApprovedUrl(
+  rawUrl: string,
+  association?: { productId: string; candidateId: string },
+) {
   const validated = validateEnrichmentUrl(rawUrl);
   if (!validated) throw errors.validation('The HTTPS domain is not approved for enrichment.');
   const apiKey = process.env.FIRECRAWL_API_KEY;
@@ -92,6 +49,7 @@ export async function enrichApprovedUrl(rawUrl: string) {
           retrievedAt,
           excerpt,
           rightsProfile,
+          ...(association ?? {}),
         },
         select: { id: true },
       });

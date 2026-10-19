@@ -12,8 +12,13 @@ export type ResearchInput = z.infer<typeof researchInput>;
 
 export const jobIdInput = z.string().min(8).max(64).regex(/^[a-zA-Z0-9_-]+$/);
 
-export const enrichmentInput = z.object({
-  url: z.string().min(1).max(2048),
+export const enrichmentInput = z.union([
+  z.object({ url: z.string().min(1).max(2048) }).strict(),
+  z.object({ candidateId: z.string().min(8).max(64).regex(/^[a-z0-9]+$/) }).strict(),
+]);
+
+export const manufacturerSearchInput = z.object({
+  asin: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{10}$/),
 }).strict();
 
 export const trendKeywordInput = z.string().trim().min(2).max(120)

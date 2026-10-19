@@ -1,6 +1,6 @@
 # Amazon Market Intelligence - Build and Release Guide
 
-**Updated:** 2026-10-15 | **Status:** repository scaffold and application implementation are present. External accounts, secrets, database migration, QStash schedule registration, and deployment remain operator steps.
+**Updated:** 2026-10-19 | **Status:** repository scaffold and application implementation are present. External accounts, secrets, database migration, QStash schedule registration, and deployment remain operator steps.
 
 This guide covers setup and release of the checked-in application. Product constraints are in [spec.md](./spec.md); system boundaries and data flow are in [architecture.md](./architecture.md). Do not follow the old copy/paste scaffold sequence from earlier revisions: project files now live in the repository.
 
@@ -8,10 +8,11 @@ This guide covers setup and release of the checked-in application. Product const
 
 - Next.js App Router application for Vercel, TypeScript, security headers, CI, and locked npm dependencies.
 - Authenticated REST and MCP surfaces backed by shared service functions.
-- Prisma Postgres schema and initial SQL migration for jobs, products, observations, a workflow outbox, provider usage, and enrichment evidence.
+- Prisma Postgres schema and SQL migrations for jobs, products, observations, manufacturer candidates, a workflow outbox, provider usage, and linked enrichment evidence.
 - Upstash Redis atomic request limits and UTC daily provider budget counters. Paid operations fail closed if Redis is missing or unavailable.
 - QStash/Workflow signed callback processing, idempotent persistence, a QStash-scheduled five-minute outbox reconciler, and daily retention cleanup.
 - Synthetic fixture mode and bounded SerpApi Amazon Search adapter. There is no silent live-to-fixture fallback.
+- Firecrawl web search for up to five candidates per saved non-synthetic product, disabled by default; results stay unverified and search never crawls or scrapes candidates.
 - Firecrawl single-page enrichment restricted to approved HTTPS domains and a recorded rights profile.
 - A responsive API landing page. It does not show secrets or claim live observations.
 
@@ -25,7 +26,7 @@ Create or identify:
 2. Upstash Redis REST credentials and Upstash Workflow/QStash credentials, including current and next signing keys.
 3. A Vercel project and a stable HTTPS production hostname. Use a plan that permits the intended commercial traffic.
 4. A SerpApi account only if Amazon listing collection, storage, and use have been reviewed and approved.
-5. A Firecrawl account only if the exact enrichment domains and excerpt storage are approved.
+5. A Firecrawl account only after approving search-result snippet use and storage; approve each domain separately before reading and storing candidate-page content.
 
 Review each provider's current price, quotas, retention terms, and rights before live collection. Provider access alone does not grant permission to store, process, export, or republish data. Keep `DATA_MODE=fixture` until live use is approved. `SERPAPI_RIGHTS_PROFILE` is an audit label; it does not replace the review.
 
@@ -51,9 +52,10 @@ Set `RESEARCH_API_KEY` to the first value and `CRON_SECRET` to the second. Do no
 | `DATA_MODE` | Listing source | `fixture` or `serpapi`; use `fixture` until approval |
 | `SERPAPI_API_KEY` | Live Amazon search | Server-only; no logging of URLs containing the key |
 | `SERPAPI_RIGHTS_PROFILE` | Live-data audit | Approved collection/storage/use profile label; required when `DATA_MODE=serpapi` |
-| `FIRECRAWL_API_KEY` | Optional enrichment | Omit to disable enrichment |
-| `APPROVED_ENRICHMENT_DOMAINS` | Optional enrichment | Comma-separated approved hostnames, no wildcards |
-| `ENRICHMENT_RIGHTS_PROFILE` | Optional evidence retention | Name of the approved collection/storage use profile; required with Firecrawl |
+| `FIRECRAWL_API_KEY` | Optional search/enrichment | Server-only; required to call Firecrawl |
+| `FIRECRAWL_SEARCH_ENABLED` | Manufacturer search | Defaults to `false`; set `true` only after search/snippet use and budget are approved |
+| `APPROVED_ENRICHMENT_DOMAINS` | Candidate-page enrichment | Comma-separated HTTPS hostnames approved for page collection/storage; no wildcards |
+| `ENRICHMENT_RIGHTS_PROFILE` | Search and evidence audit | Reviewed use-profile label required with Firecrawl; the label does not grant rights |
 | `UPSTASH_REDIS_REST_URL` | Limits and budgets | HTTPS REST endpoint |
 | `UPSTASH_REDIS_REST_TOKEN` | Limits and budgets | Secret token |
 | `QSTASH_TOKEN` | Production dispatch | Required outside local development mode |
@@ -90,12 +92,13 @@ Available repository checks:
 ```bash
 npm run typecheck
 npm run lint
+npm test
 npm run build
 npm run env:check
 npx prisma validate
 ```
 
-CI runs these schema/static/build checks. Automated unit and integration tests are not included in this initial scaffold; use the manual acceptance steps below before production activation.
+`npm test` runs deterministic simulated-provider cases for manufacturer search. CI still runs schema/static/build checks and does not call live APIs or databases.
 
 ## 5. API usage
 
@@ -107,7 +110,8 @@ Every protected request sends `Authorization: Bearer $RESEARCH_API_KEY`. Respons
 | `POST` | `/api/research` | Queue a keyword observation; optional `Idempotency-Key` |
 | `GET` | `/api/research/{jobId}` | Read job state, source, synthetic flag, observations, and provenance |
 | `GET` | `/api/trends?keyword=...` | Compare compatible page 1 / limit 10 observations |
-| `POST` | `/api/enrich` | Store one bounded excerpt from an approved site |
+| `POST` | `/api/manufacturers/search` | Search at most five results for a saved, non-synthetic ASIN; disabled unless `FIRECRAWL_SEARCH_ENABLED=true` |
+| `POST` | `/api/enrich` | Store one bounded excerpt from an approved site or a selected candidate |
 | `GET`, `POST` | `/api/mcp` | Authenticated MCP: `research_products`, `get_research`, `get_trends` |
 
 Submit a synthetic job:
@@ -121,6 +125,8 @@ curl -i -X POST http://localhost:3000/api/research \
 ```
 
 Poll the returned `statusUrl` until it is `SUCCEEDED` or a terminal failure. The fixture is marked `synthetic: true`. A single successful snapshot returns `insufficient_history`; later compatible snapshots yield directional-only signals. Rank movement is not a verified demand or sales measure.
+
+Manufacturer search accepts `{"asin":"<saved non-synthetic ASIN>"}`. Each returned candidate includes its search title, URL, snippet, source, and `relationshipVerified: false`. Pass a returned candidate `id` to `/api/enrich` as `{"candidateId":"..."}`; the existing approved-domain and rights-profile checks apply before content is fetched and stored. Search snippets and page text do not prove who manufactured the product.
 
 Before switching to SerpApi, set `DATA_MODE=serpapi`, configure the key and a conservative daily cap, submit a new job with a new idempotency key, then review provider billing and data-use terms. Provider failures remain visible as failures; they never produce fixture results.
 
@@ -209,6 +215,7 @@ The daily retention task deletes terminal research jobs and their observations a
 - Static bearer auth is single-tenant and not a public OAuth solution.
 - No watchlist scheduler, sales-volume data, broad crawling, AI summary, or Airtable export is enabled.
 - Application budget counters do not guarantee a provider bill cap. Set provider-side caps where available and review usage.
+- Firecrawl search shares the daily provider budget with page enrichment; each bearer client can make at most five combined search/enrichment calls per hour. Keep search disabled until snippet use and storage are approved, and approve each candidate domain before page enrichment.
 - Firecrawl's SDK returns a single-page response that is truncated before persistence, but the SDK buffers the provider response before the application slices the excerpt. Keep domains tightly approved and verify provider response controls for the selected account.
 - Provider terms and retained evidence require human review; `rightsProfile` is an audit label, not legal approval by itself.
 - Add unit/integration and deployment smoke automation before opening the service to external customers.

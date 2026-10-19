@@ -9,7 +9,7 @@ Para autorizar as contas, custos e credenciais necessários à publicação, use
 ## Product limits
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
-- Firecrawl enrichment is limited to explicitly approved HTTPS domains. `ENRICHMENT_RIGHTS_PROFILE` records the approved use profile alongside stored evidence.
+- Firecrawl search is disabled by default (`FIRECRAWL_SEARCH_ENABLED=false`). After approval, it can return up to five candidate pages per call for a saved, non-synthetic product, with a shared limit of five search/enrichment calls per hour per bearer client. Search titles and snippets are unverified leads, never proof of a manufacturer. Reading a selected candidate page still requires its HTTPS domain in `APPROVED_ENRICHMENT_DOMAINS`; `ENRICHMENT_RIGHTS_PROFILE` records the reviewed use profile, but does not grant rights by itself.
 - Trends compare saved observations and remain directional rank/price/review proxies. They are not sales, revenue, demand, or market-share measurements.
 - This is a single-tenant API key model. Use an OAuth/OIDC identity system and tenant isolation before offering it to unrelated customers.
 - Commercial production use requires a plan that permits commercial traffic and separate budget controls for every vendor.
@@ -45,6 +45,7 @@ Before promoting code, these project checks are available:
 ```bash
 npm run typecheck
 npm run lint
+npm test
 npm run build
 npm run env:check
 ```
@@ -61,8 +62,19 @@ Protected routes require `Authorization: Bearer $RESEARCH_API_KEY`. Responses us
 | `POST` | `/api/research` | Queue one keyword job; accepts `Idempotency-Key` |
 | `GET` | `/api/research/{jobId}` | Read status, source, synthetic marker, results, and provenance |
 | `GET` | `/api/trends?keyword=...` | Compare compatible snapshots or return `insufficient_history` |
-| `POST` | `/api/enrich` | Fetch and retain one approved public-site excerpt |
+| `POST` | `/api/manufacturers/search` | Search up to five web results for a saved, non-synthetic ASIN; candidates stay unverified |
+| `POST` | `/api/enrich` | Fetch one approved public-site excerpt by URL or saved `candidateId` |
 | `GET`, `POST` | `/api/mcp` | Authenticated MCP tools: `research_products`, `get_research`, `get_trends` |
+
+Search only accepts an ASIN already saved from a successful non-synthetic observation. Replace the placeholder ASIN with a saved one. Pass one returned candidate's `id` to `/api/enrich` to read its page; this still requires the candidate domain to be approved:
+
+```json
+{ "asin": "B0EXAMPLE1" }
+```
+
+```json
+{ "candidateId": "cm1234567890abcdef1234567" }
+```
 
 Example submission:
 
@@ -87,7 +99,8 @@ Production configuration requires:
 - `RESEARCH_API_KEY`, `CRON_SECRET`, Upstash Redis credentials, QStash token and both signing keys.
 - `DATA_MODE=fixture` until SerpApi collection, storage, and commercial-use rights are approved. Then set `SERPAPI_API_KEY` and a conservative daily budget.
 - `SERPAPI_RIGHTS_PROFILE` names the reviewed live-data use profile and is persisted with each job. It is an audit label, not a substitute for the rights review.
-- Firecrawl credentials, reviewed `APPROVED_ENRICHMENT_DOMAINS`, and a documented `ENRICHMENT_RIGHTS_PROFILE` only when enrichment is approved.
+- Firecrawl search requires `FIRECRAWL_SEARCH_ENABLED=true`, an approved search/snippet use profile, and a conservative `MAX_FIRECRAWL_CALLS_PER_DAY`; leave it `false` until approved. The same daily budget covers search and scrape calls. `ENRICHMENT_RIGHTS_PROFILE` is an audit label, not a substitute for rights approval.
+- `APPROVED_ENRICHMENT_DOMAINS` is required for selected-page scraping. The allowlist and page-content use/storage rights must be approved before scraping. Search results never trigger a scrape or crawl automatically.
 - `QSTASH_DEV` unset in production. Apply migrations with `npm run db:deploy` before routing traffic to a release that requires them.
 
 Run `npm run env:check:production` in a release shell after loading the production environment. It checks required configuration and secret lengths without printing secret values or connecting to services.

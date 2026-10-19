@@ -2,6 +2,8 @@
 
 Estado em 17/10/2026: o código está no [GitHub](https://github.com/defxico/amazon-market-intelligence), branch `main`. A URL pública da API, os recursos de produção e o token de produção ainda precisam ser configurados e verificados. Este checklist cobre primeiro uma demonstração com dados sintéticos (`DATA_MODE=fixture`).
 
+Atualização em 19/10/2026: a variável `FIRECRAWL_SEARCH_ENABLED=true` foi adicionada ao ambiente Production da Vercel a pedido do responsável. `FIRECRAWL_API_KEY` e `ENRICHMENT_RIGHTS_PROFILE` não estão configurados nos ambientes Production, Preview ou Development; portanto, a busca ainda não chama o provedor. O limite diário do código é 5 chamadas por padrão. Aprovação de direitos de busca/armazenamento e de orçamento monetário continua pendente; a leitura de páginas também exige aprovação por domínio.
+
 Marque uma caixa somente depois de confirmar a ação. **Você** responde por contas, custos e autorização de uso de dados. **IA** executa configuração e verificação técnica quando tiver acesso autorizado. Credenciais reais não devem ser escritas neste arquivo, em issues, commits ou mensagens de chat; use variáveis protegidas no serviço ou um cofre de segredos.
 
 ## 1. Contas e acessos que dependem de você
@@ -25,7 +27,8 @@ Você pode configurar pessoalmente os segredos nos painéis dos provedores e da 
 - [ ] **Retenção:** aprovar por quanto tempo guardar observações/resultados (`OBSERVATION_RETENTION_DAYS`, padrão `30`) e registros de uso (`USAGE_RETENTION_DAYS`, padrão `365`), conforme necessidade e termos aplicáveis.
 - [ ] **Destinatário do token:** decidir quem receberá o token da API e por qual canal seguro. O código usa **um único token compartilhado** (`RESEARCH_API_KEY`) para as rotas protegidas; quem o recebe pode acessar essas rotas. Se precisar de tokens por cliente, permissões distintas ou revogação individual, isso exige mudança na aplicação antes da distribuição.
 - [ ] **Dados reais, se desejados depois:** aprovar separadamente coleta, armazenamento e uso de resultados da Amazon via SerpApi; definir orçamento diário (`MAX_SERPAPI_CALLS_PER_DAY`, padrão `25`) e registrar um identificador da aprovação em `SERPAPI_RIGHTS_PROFILE`.
-- [ ] **Enriquecimento, se desejado depois:** aprovar os domínios HTTPS específicos, o uso e o armazenamento de trechos obtidos via Firecrawl; definir `APPROVED_ENRICHMENT_DOMAINS`, `ENRICHMENT_RIGHTS_PROFILE` e orçamento diário (`MAX_FIRECRAWL_CALLS_PER_DAY`, padrão `5`). Possuir uma chave do provedor não substitui essa aprovação.
+- [ ] **Busca Firecrawl, se desejada depois:** aprovar nos termos do provedor a busca web e o uso/armazenamento de títulos e trechos de resultados; registrar o perfil em `ENRICHMENT_RIGHTS_PROFILE`, definir orçamento diário (`MAX_FIRECRAWL_CALLS_PER_DAY`, padrão `5`) e só então definir `FIRECRAWL_SEARCH_ENABLED=true`. A chave e o perfil de auditoria não substituem aprovação de direitos.
+- [ ] **Leitura de páginas candidatas, se desejada depois:** aprovar os domínios HTTPS específicos e o uso/armazenamento do conteúdo coletado; cadastrar somente esses domínios em `APPROVED_ENRICHMENT_DOMAINS`. Busca não autoriza scrape automático.
 
 ## 3. Credenciais e configuração de produção
 
@@ -46,7 +49,7 @@ Os nomes abaixo vêm de [`.env.example`](../.env.example) e de [`scripts/check-e
 | `DATA_MODE` | Decisão de uso de dados | `fixture` no primeiro deploy |
 | `QSTASH_DEV` | Configuração local | Deixar ausente em produção |
 
-**Somente após aprovação de dados reais:** `SERPAPI_API_KEY` e `SERPAPI_RIGHTS_PROFILE` para `DATA_MODE=serpapi`; `FIRECRAWL_API_KEY`, `APPROVED_ENRICHMENT_DOMAINS` e `ENRICHMENT_RIGHTS_PROFILE` para enriquecimento. Sem aprovação, deixar as chaves desses provedores ausentes em produção. Configurar os limites diários e a retenção aprovados na seção anterior.
+**Somente após aprovação de dados reais:** `SERPAPI_API_KEY` e `SERPAPI_RIGHTS_PROFILE` para `DATA_MODE=serpapi`; `FIRECRAWL_API_KEY`, `ENRICHMENT_RIGHTS_PROFILE`, orçamento aprovado e `FIRECRAWL_SEARCH_ENABLED=true` para busca e armazenamento de snippets. Defina `APPROVED_ENRICHMENT_DOMAINS` somente para páginas cujo scrape e armazenamento tenham aprovação específica. Sem aprovação, deixe `FIRECRAWL_SEARCH_ENABLED=false` e as chaves dos provedores ausentes em produção. Configure os limites diários e a retenção aprovados na seção anterior.
 
 ## 4. Execução técnica pela IA após os acessos
 
