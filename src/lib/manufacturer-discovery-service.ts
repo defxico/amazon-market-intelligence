@@ -133,7 +133,7 @@ export async function searchSavedProductManufacturers(asin: string, clientId: st
       candidates: saved,
       providerUsageRequestId: requestId,
       creditsUsed: calculateFirecrawlCreditsUsed(creditsBefore, creditsAfter),
-      warning: 'Candidate names are search-result titles. Search results and site text do not verify who manufactures this product or ASIN.',
+      warning: 'Search results mention manufacturing capabilities, but do not confirm the company, its production capacity, or product fit.',
       source: 'firecrawl.search',
       rightsProfile,
     };
