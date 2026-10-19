@@ -14,7 +14,7 @@
 | ADR-006 | **Upstash Workflow/QStash** for asynchronous jobs | Reliable callbacks/retries without a persistent process |
 | ADR-007 | **No BullMQ Worker on Vercel** | Upstash Redis supports BullMQ, but a worker needs continuous polling; incompatible with a wholly Vercel-only compute target |
 | ADR-008 | **SerpApi Amazon Search only** for marketplace listings | Narrow, parseable output, controlled one-query costs, provider adapter |
-| ADR-009 | **Firecrawl only** for opt-in public website enrichment | Site allowlist, small excerpts, no unrestricted crawler |
+| ADR-009 | **Firecrawl only** for opt-in public website enrichment | Explicit user selection, public HTTPS validation, small excerpts, no unrestricted crawler |
 | ADR-010 | Structured, deterministic trend math; optional AI P1 | Proxy-derived rank changes are not real demand/sales measurements |
 | ADR-011 | Constant-time bearer authentication for private MVP | Fast to bootstrap; OAuth required for wide-public MCP integrations later |
 | ADR-012 | Strict data budgets and provenance | Database capacity, rights restrictions and provider credit control |
@@ -53,7 +53,7 @@ API, MCP, and business services execute inside one Vercel Next.js project. Redis
 | Upstash Redis | Upstash hosted REST | HTTPS only | Atomic request and daily provider-budget counters (ephemeral) |
 | Upstash Workflow | QStash managed | Signed HTTPS callbacks | Delivery, retry bookkeeping, step state |
 | SerpApi | External provider | HTTPS egress | Amazon search observations |
-| Firecrawl | External provider | HTTPS egress | Explicit approved domain page extract |
+| Firecrawl | External provider | HTTPS egress | One user-selected public HTTPS page excerpt |
 
 Trust boundaries: public -> Vercel (bearer, validation, body caps); Vercel -> Workflow (authenticated trigger); Workflow -> Vercel (signature validation); Vercel -> provider (secret isolation, budgets, and timeouts); database -> client (field allowlist). Untrusted provider content never becomes instructions to execute.
 
@@ -303,7 +303,7 @@ Return 2-3 bounded example items with synthetic ASINs valid in shape; no false a
 
 ### Firecrawl
 
-The adapter uses Firecrawl scrape for one explicitly approved HTTPS URL, checks the final URL against the same approved domain root, stores at most a 4,000-character excerpt, and applies request timeouts. The SDK buffers the upstream result before application truncation, so the stored excerpt limit is not an upstream response-size limit. Hostname checks reject IP literals and common local/private names but do not independently resolve DNS or prevent every redirect behavior. Keep the allowlist restricted to trusted domains and verify provider controls. Firecrawl is a **public website enrichment** adapter, not an unbounded Amazon page crawler. Treat returned text as hostile content; there is no implicit brand/ASIN linkage.
+The adapter uses Firecrawl scrape for one explicitly selected HTTPS URL on any public domain, validates the final URL as public HTTPS, stores at most a 4,000-character excerpt, and applies request timeouts. The SDK buffers the upstream result before application truncation, so the stored excerpt limit is not an upstream response-size limit. Hostname checks reject IP literals and common local/private names but do not independently resolve DNS or prevent every redirect behavior. Firecrawl is a **public website enrichment** adapter, not an unbounded Amazon page crawler. Treat returned text as hostile content; there is no implicit brand/ASIN linkage.
 
 ### Provider contract
 
@@ -399,7 +399,7 @@ REST and MCP tools invoke `ResearchService`, not SerpApi/QStash/database directl
 | Invalid `APP_BASE_URL` | callbacks cannot reach function | Set stable production HTTPS URL and redeploy |
 | Wrong Prisma URL on migration | locking/prepared-statement errors | Use direct URL for CLI and pooled for runtime |
 | No repeat observation | `insufficient_history` | Schedule/trigger another same-query run later |
-| Firecrawl reports a source URL outside the approved allowlist | Reject and do not store the excerpt | Verify provider redirect behavior and tighten the domain list |
+| Firecrawl reports an invalid, local, or non-public source URL | Reject and do not store the excerpt | Verify provider redirect behavior and public URL validation |
 
 ## 15. Performance, budgets and scale-up triggers
 
@@ -426,7 +426,7 @@ Reconsider architecture only when: queue volume overwhelms Vercel Function limit
 |---|---|---|
 | Unit | Zod input, price/rank normalizer | Invalid fields refused, missing -> null |
 | Unit | Trend delta math and absent ASIN | Correct signed deltas; no invented demand |
-| Unit | Firecrawl allowlist | HTTP, IP, localhost and unrelated domains rejected |
+| Unit | Firecrawl URL validation | Any public HTTPS domain accepted; HTTP, IP and localhost rejected |
 | Unit | API bearer timing-safe verification | 401 on absent/wrong; accepts valid |
 | Integration | Prisma test DB migration | Models/indices/references created |
 | Integration | Replayed Workflow step | Exactly 1 observation per job/product |

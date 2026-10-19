@@ -10,7 +10,7 @@ Para autorizar as contas, custos e credenciais necessários à publicação, use
 
 - SerpApi Amazon Search is the only live Amazon listing source. `DATA_MODE=fixture` is available for synthetic development and never becomes an automatic fallback.
 - New live product research uses Amazon's `Best Sellers` sort for the submitted keyword through SerpApi (`s=exact-aware-popularity-rank`). It reports a ranking, not units sold or search volume. Jobs created before this change retain the `featured` label and are not mixed with Best Sellers jobs in trend comparisons.
-- Firecrawl search requires an explicit product brief with a saved, non-synthetic Amazon ASIN. It searches up to ten web results for private-label, OEM, or contract manufacturing, screens for product-category and B2B signals, and saves up to five `SEARCH_EVIDENCE` leads with source `firecrawl.search.manufacturer-v2`. Diagnostics explain how many hits passed or failed screening. Search evidence does not confirm a company's capacity, quality, MOQ, or availability. `GET /api/manufacturers?asin=...` reopens screened leads and diagnostics without another provider call; older results appear separately as `legacyCandidates`. Reading a selected page still follows the existing domain allowlist and updates capability status to `PAGE_EVIDENCE` or `PAGE_NOT_CONFIRMED`.
+- Firecrawl search requires an explicit product brief with a saved, non-synthetic Amazon ASIN. It searches up to ten web results for private-label, OEM, or contract manufacturing, screens for product-category and B2B signals, and saves up to five `SEARCH_EVIDENCE` leads with source `firecrawl.search.manufacturer-v2`. Diagnostics explain how many hits passed or failed screening. Search evidence does not confirm a company's capacity, quality, MOQ, or availability. `GET /api/manufacturers?asin=...` reopens screened leads and diagnostics without another provider call; older results appear separately as `legacyCandidates`. Reading a selected public HTTPS page updates capability status to `PAGE_EVIDENCE` or `PAGE_NOT_CONFIRMED`.
 - Trends compare saved observations and remain directional rank/price/review proxies. They are not sales, revenue, demand, or market-share measurements.
 - This is a single-tenant API key model. Use an OAuth/OIDC identity system and tenant isolation before offering it to unrelated customers.
 - Commercial production use requires a plan that permits commercial traffic and separate budget controls for every vendor.
@@ -65,10 +65,10 @@ Protected routes require `Authorization: Bearer $RESEARCH_API_KEY`. Responses us
 | `GET` | `/api/trends?keyword=...` | Compare compatible snapshots or return `insufficient_history` |
 | `GET` | `/api/manufacturers?asin=...` | Read up to five saved candidate pages without a provider request |
 | `POST` | `/api/manufacturers/search` | Search up to ten web results for a saved ASIN and explicit product brief; returns up to five screened leads |
-| `POST` | `/api/enrich` | Fetch one approved public-site excerpt by URL or saved `candidateId` |
+| `POST` | `/api/enrich` | Fetch one public HTTPS site excerpt by URL or saved `candidateId` |
 | `GET`, `POST` | `/api/mcp` | Authenticated MCP tools: `research_products`, `get_research`, `get_trends`, `search_saved_product_candidates`, `get_saved_product_candidates` |
 
-Search only accepts an ASIN already saved from a successful non-synthetic observation. Replace the placeholder ASIN with a saved one. Pass one returned candidate's `id` to `/api/enrich` to read its page; this still requires the candidate domain to be approved:
+Search only accepts an ASIN already saved from a successful non-synthetic observation. Replace the placeholder ASIN with a saved one. Pass one returned candidate's `id` to `/api/enrich` to read that page. The API accepts public HTTPS domains and rejects local or non-public targets. Search results never trigger a scrape automatically; a page is read only after the user selects a candidate:
 
 ```json
 { "asin": "B0EXAMPLE1" }
@@ -102,7 +102,7 @@ Production configuration requires:
 - `DATA_MODE=fixture` until SerpApi collection, storage, and commercial-use rights are approved. Then set `SERPAPI_API_KEY` and a conservative daily budget.
 - `SERPAPI_RIGHTS_PROFILE` names the reviewed live-data use profile and is persisted with each job. It is an audit label, not a substitute for the rights review.
 - Firecrawl search requires `FIRECRAWL_SEARCH_ENABLED=true`, an approved search/snippet use profile, and a conservative `MAX_FIRECRAWL_CALLS_PER_DAY`; this production deployment has search enabled. The same daily budget covers search and scrape calls. `ENRICHMENT_RIGHTS_PROFILE` is an audit label, not a substitute for rights approval.
-- `APPROVED_ENRICHMENT_DOMAINS` is required for selected-page scraping. The allowlist and page-content use/storage rights must be approved before scraping. Search results never trigger a scrape or crawl automatically.
+- Selected-page scraping accepts any public HTTPS domain. Local and non-public targets are rejected. Search results never trigger a scrape or crawl automatically; the user must select a candidate.
 - `QSTASH_DEV` unset in production. Apply migrations with `npm run db:deploy` before routing traffic to a release that requires them.
 
 Run `npm run env:check:production` in a release shell after loading the production environment. It checks required configuration and secret lengths without printing secret values or connecting to services.

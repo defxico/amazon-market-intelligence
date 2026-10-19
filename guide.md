@@ -54,7 +54,6 @@ Set `RESEARCH_API_KEY` to the first value and `CRON_SECRET` to the second. Do no
 | `SERPAPI_RIGHTS_PROFILE` | Live-data audit | Approved collection/storage/use profile label; required when `DATA_MODE=serpapi` |
 | `FIRECRAWL_API_KEY` | Optional search/enrichment | Server-only; required to call Firecrawl |
 | `FIRECRAWL_SEARCH_ENABLED` | Manufacturer search | Defaults to `false`; set `true` only after search/snippet use and budget are approved |
-| `APPROVED_ENRICHMENT_DOMAINS` | Candidate-page enrichment | Comma-separated HTTPS hostnames approved for page collection/storage; no wildcards |
 | `ENRICHMENT_RIGHTS_PROFILE` | Search and evidence audit | Reviewed use-profile label required with Firecrawl; the label does not grant rights |
 | `UPSTASH_REDIS_REST_URL` | Limits and budgets | HTTPS REST endpoint |
 | `UPSTASH_REDIS_REST_TOKEN` | Limits and budgets | Secret token |
@@ -126,7 +125,7 @@ curl -i -X POST http://localhost:3000/api/research \
 
 Poll the returned `statusUrl` until it is `SUCCEEDED` or a terminal failure. The fixture is marked `synthetic: true`. A single successful snapshot returns `insufficient_history`; later compatible snapshots yield directional-only signals. Rank movement is not a verified demand or sales measure.
 
-Manufacturer search accepts `{"asin":"<saved non-synthetic ASIN>"}`. Each returned candidate includes its search title, URL, snippet, source, and `relationshipVerified: false`. Pass a returned candidate `id` to `/api/enrich` as `{"candidateId":"..."}`; the existing approved-domain and rights-profile checks apply before content is fetched and stored. Search snippets and page text do not prove who manufactured the product.
+Manufacturer search accepts `{"asin":"<saved non-synthetic ASIN>"}`. Each returned candidate includes its search title, URL, snippet, source, and `relationshipVerified: false`. Pass a returned candidate `id` to `/api/enrich` as `{"candidateId":"..."}`; the API fetches that public HTTPS page and stores a bounded excerpt. Search snippets and page text do not prove who manufactured the product.
 
 Before switching to SerpApi, set `DATA_MODE=serpapi`, configure the key and a conservative daily cap, submit a new job with a new idempotency key, then review provider billing and data-use terms. Provider failures remain visible as failures; they never produce fixture results.
 
@@ -189,7 +188,7 @@ Then confirm all of the following:
 - Wrong/missing credentials return 401 on REST and MCP.
 - MCP `tools/list` returns exactly the three documented tools.
 - Direct unsigned POST to `/api/workflows/research` is rejected.
-- Unknown, HTTP, IP, localhost, private-name, and non-allowlisted URLs are refused by `/api/enrich`.
+- HTTP, IP, localhost, private-name, and non-public URLs are refused by `/api/enrich`.
 - Outbox and daily retention cron routes reject requests without `CRON_SECRET`.
 - QStash shows the signed workflow callback; provider usage, result provenance, and configured retention appear as expected.
 - Redis or provider outages do not bypass rate limits or switch live jobs to fixtures.
@@ -215,8 +214,8 @@ The daily retention task deletes terminal research jobs and their observations a
 - Static bearer auth is single-tenant and not a public OAuth solution.
 - No watchlist scheduler, sales-volume data, broad crawling, AI summary, or Airtable export is enabled.
 - Application budget counters do not guarantee a provider bill cap. Set provider-side caps where available and review usage.
-- Firecrawl search shares the daily provider budget with page enrichment; each bearer client can make at most five combined search/enrichment calls per hour. Keep search disabled until snippet use and storage are approved, and approve each candidate domain before page enrichment.
-- Firecrawl's SDK returns a single-page response that is truncated before persistence, but the SDK buffers the provider response before the application slices the excerpt. Keep domains tightly approved and verify provider response controls for the selected account.
+- Firecrawl search shares the daily provider budget with page enrichment; each bearer client can make at most 20 combined search/enrichment calls per hour. Keep search disabled until snippet use and storage are approved. Page enrichment accepts any public HTTPS domain after the operator selects a candidate.
+- Firecrawl's SDK returns a single-page response that is truncated before persistence, but the SDK buffers the provider response before the application slices the excerpt. Verify provider response controls for the selected account.
 - Provider terms and retained evidence require human review; `rightsProfile` is an audit label, not legal approval by itself.
 - Add unit/integration and deployment smoke automation before opening the service to external customers.
 

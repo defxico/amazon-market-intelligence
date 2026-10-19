@@ -30,3 +30,5 @@ export function validatePublicHttpsUrl(raw: string): { url: URL; sourceHost: str
     return null;
   }
 }
+
+export const validateEnrichmentUrl = validatePublicHttpsUrl;

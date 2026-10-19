@@ -1,10 +1,12 @@
 # Firecrawl Manufacturer Discovery Implementation Plan
 
+> **Implementation update (2026-10-19):** The original domain allowlist requirement below was removed. `/api/enrich` accepts any public HTTPS domain after explicit candidate selection; local and non-public targets remain rejected.
+
 > **For agentic workers:** Execute inline by default with superpowers:executing-plans. Use sub-agent workflows only when the user explicitly invokes a sub-agent skill. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add bounded Firecrawl web search for saved, non-synthetic Amazon products and let approved candidate pages reuse the existing enrichment flow.
 
-**Architecture:** Add an authenticated REST search route backed by `Firecrawl.search` with `sources: ['web']` and `limit: 5`; omit `scrapeOptions`. Persist deduplicated candidates against products with `relationshipVerified=false`; selected candidates use `/api/enrich` and the existing domain allowlist before their evidence links to candidate and product.
+**Architecture:** Add an authenticated REST search route backed by `Firecrawl.search` with `sources: ['web']` and `limit: 5`; omit `scrapeOptions`. Persist deduplicated candidates against products with `relationshipVerified=false`; selected candidates use `/api/enrich`, which validates public HTTPS URLs before their evidence links to candidate and product.
 
 **Tech Stack:** Next.js App Router, TypeScript, Firecrawl SDK 4.46.0, Prisma/PostgreSQL, Upstash Redis, Node `test`, `tsx`.
 
@@ -13,7 +15,7 @@
 - Search requires bearer auth, uses the existing five-calls-per-hour enrichment limiter, and reserves the shared Firecrawl daily budget.
 - Search remains disabled unless `FIRECRAWL_SEARCH_ENABLED=true`; leave it false until search/snippet rights and budget are approved.
 - Search never scrapes results, starts a crawl, includes `scrapeOptions`, or runs against synthetic-only products.
-- Candidate/product relationships remain unverified; page content requires approved domain and use before storage.
+- Candidate/product relationships remain unverified; page content is stored only after explicit selection and under the configured use profile.
 - Tests use injected fake provider results; do not make paid calls, enable collection, change `DATA_MODE`, expose secrets, push, or deploy.
 - Deliver one implementation commit.
 
@@ -40,7 +42,7 @@
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/20261019120000_manufacturer_candidates/migration.sql`
 
-**Interfaces:** `POST /api/manufacturers/search` accepts `{ "asin": "B0EXAMPLE1" }`; `POST /api/enrich` keeps `{ "url": "https://..." }` and also accepts `{ "candidateId": "..." }`. Search uses `Firecrawl.search(query, { limit: 5, sources: ['web'] })`; `/api/enrich` validates selected candidate URLs against `APPROVED_ENRICHMENT_DOMAINS` before scraping.
+**Interfaces:** `POST /api/manufacturers/search` accepts `{ "asin": "B0EXAMPLE1" }`; `POST /api/enrich` keeps `{ "url": "https://..." }` and also accepts `{ "candidateId": "..." }`. Search uses `Firecrawl.search(query, { limit: 5, sources: ['web'] })`; `/api/enrich` validates selected candidate URLs as public HTTPS before scraping.
 
 - [x] Reuse `permitEnrichment` and `reserveProviderCall('firecrawl')` for per-call and daily limits.
 - [x] Require one successful non-synthetic saved observation before spending search budget.
@@ -55,7 +57,7 @@
 - Modify: `README.md`, `guide.md`, `src/app/page.tsx`, `docs/checklist-publicacao.md`, `docs/como-obter-acessos.md`, `scripts/check-env.mjs`, `.env.example`
 - Modify: `package.json` only if test command needs correction
 
-- [x] Explain that search snippets and selected-page collection have separate approval boundaries; an allowlist is required only to scrape a selected domain.
+- [x] Explain that search snippets and selected-page collection have separate approval boundaries; enrichment requires explicit selection and accepts public HTTPS domains.
 - [x] Check environment validation with fake fixture settings: default search stays disabled; enabled search rejects missing Firecrawl credentials.
 - [x] Run Prisma validation and inspect `git diff --check`, `git status`, and complete diff.
 - [x] Commit all feature and documentation files once with `feat: discover manufacturer candidates with Firecrawl`.

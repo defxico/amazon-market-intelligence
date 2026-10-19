@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test src/lib/manufacturer-discovery.test.ts src/lib/amazon-search-url.test.ts",
+    "test": "tsx --test src/lib/manufacturer-discovery.test.ts src/lib/amazon-search-url.test.ts src/lib/enrichment-url.test.ts",
     "smoke:mcp": "node scripts/mcp-client-smoke.mjs",
     "env:check": "node scripts/check-env.mjs",
     "env:check:production": "node scripts/check-env.mjs --production",

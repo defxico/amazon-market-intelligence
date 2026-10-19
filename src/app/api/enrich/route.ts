@@ -1,5 +1,5 @@
 import { requireBearer } from '@/lib/auth';
-import { enrichApprovedUrl } from '@/lib/enrichment';
+import { enrichPublicUrl } from '@/lib/enrichment';
 import { errors } from '@/lib/errors';
 import { errorResponse, getRequestId, jsonResponse, readJson, safeLog } from '@/lib/http';
 import { enrichSavedManufacturerCandidate } from '@/lib/manufacturer-discovery-service';
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!(await permitEnrichment(clientId))) throw errors.rateLimited();
     const result = 'candidateId' in parsed.data
       ? await enrichSavedManufacturerCandidate(parsed.data.candidateId)
-      : await enrichApprovedUrl(parsed.data.url);
+      : await enrichPublicUrl(parsed.data.url);
     return jsonResponse(result, 200, requestId);
   } catch (error) {
     safeLog('enrichment_error', {

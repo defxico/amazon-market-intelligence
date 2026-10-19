@@ -28,7 +28,7 @@ Você pode configurar pessoalmente os segredos nos painéis dos provedores e da 
 - [ ] **Destinatário do token:** decidir quem receberá o token da API e por qual canal seguro. O código usa **um único token compartilhado** (`RESEARCH_API_KEY`) para as rotas protegidas; quem o recebe pode acessar essas rotas. Se precisar de tokens por cliente, permissões distintas ou revogação individual, isso exige mudança na aplicação antes da distribuição.
 - [ ] **Dados reais, se desejados depois:** aprovar separadamente coleta, armazenamento e uso de resultados da Amazon via SerpApi; definir orçamento diário (`MAX_SERPAPI_CALLS_PER_DAY`, padrão `25`) e registrar um identificador da aprovação em `SERPAPI_RIGHTS_PROFILE`.
 - [ ] **Busca Firecrawl, se desejada depois:** aprovar nos termos do provedor a busca web e o uso/armazenamento de títulos e trechos de resultados; registrar o perfil em `ENRICHMENT_RIGHTS_PROFILE`, definir orçamento diário (`MAX_FIRECRAWL_CALLS_PER_DAY`, padrão `5`) e só então definir `FIRECRAWL_SEARCH_ENABLED=true`. A chave e o perfil de auditoria não substituem aprovação de direitos.
-- [ ] **Leitura de páginas candidatas, se desejada depois:** aprovar os domínios HTTPS específicos e o uso/armazenamento do conteúdo coletado; cadastrar somente esses domínios em `APPROVED_ENRICHMENT_DOMAINS`. Busca não autoriza scrape automático.
+- [ ] **Leitura de páginas candidatas, se desejada depois:** aprovar o uso e armazenamento do conteúdo coletado. A aplicação aceita qualquer URL HTTPS pública, rejeita destinos locais/não públicos e só lê uma página quando o operador seleciona o candidato; busca não inicia scrape automático.
 
 ## 3. Credenciais e configuração de produção
 
@@ -49,7 +49,7 @@ Os nomes abaixo vêm de [`.env.example`](../.env.example) e de [`scripts/check-e
 | `DATA_MODE` | Decisão de uso de dados | `fixture` no primeiro deploy |
 | `QSTASH_DEV` | Configuração local | Deixar ausente em produção |
 
-**Somente após aprovação de dados reais:** `SERPAPI_API_KEY` e `SERPAPI_RIGHTS_PROFILE` para `DATA_MODE=serpapi`; `FIRECRAWL_API_KEY`, `ENRICHMENT_RIGHTS_PROFILE`, orçamento aprovado e `FIRECRAWL_SEARCH_ENABLED=true` para busca e armazenamento de snippets. Defina `APPROVED_ENRICHMENT_DOMAINS` somente para páginas cujo scrape e armazenamento tenham aprovação específica. Sem aprovação, deixe `FIRECRAWL_SEARCH_ENABLED=false` e as chaves dos provedores ausentes em produção. Configure os limites diários e a retenção aprovados na seção anterior.
+**Somente após aprovação de dados reais:** `SERPAPI_API_KEY` e `SERPAPI_RIGHTS_PROFILE` para `DATA_MODE=serpapi`; `FIRECRAWL_API_KEY`, `ENRICHMENT_RIGHTS_PROFILE`, orçamento aprovado e `FIRECRAWL_SEARCH_ENABLED=true` para busca e armazenamento de snippets. A leitura de página acontece apenas após seleção explícita do candidato e aceita qualquer destino HTTPS público. Sem aprovação, deixe `FIRECRAWL_SEARCH_ENABLED=false` e as chaves dos provedores ausentes em produção. Configure os limites diários e a retenção aprovados na seção anterior.
 
 ## 4. Execução técnica pela IA após os acessos
 

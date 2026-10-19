@@ -10,7 +10,7 @@ import {
   normalizeManufacturerProductBrief,
   serializeSavedProductCandidates,
 } from './manufacturer-discovery';
-import { enrichApprovedUrl } from './enrichment';
+import { enrichPublicUrl } from './enrichment';
 import { AppError, errors } from './errors';
 import { permitEnrichment, permitRead, reserveProviderCall } from './rate-limit';
 
@@ -284,7 +284,7 @@ export async function enrichSavedManufacturerCandidate(candidateId: string) {
     select: { id: true, productId: true, url: true, productBrief: true },
   });
   if (!candidate || !candidate.productBrief) throw errors.notFound();
-  return enrichApprovedUrl(candidate.url, {
+  return enrichPublicUrl(candidate.url, {
     candidateId: candidate.id,
     productId: candidate.productId,
     productBrief: candidate.productBrief,

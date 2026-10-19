@@ -42,7 +42,7 @@ Build a Vercel-hosted, API-first market intelligence service that accepts an Ama
 3. `POST /api/research` creates a persisted keyword-research job and enqueues Upstash Workflow, returning HTTP 202 and a job ID.
 4. `GET /api/research/{id}` returns the current job, observations, source, timestamps, and errors (redacted).
 5. `GET /api/trends?keyword=...` compares two completed observations of matching products when present, otherwise returns `insufficient_history`.
-6. `POST /api/enrich` retrieves one permitted public web page through Firecrawl, enforces the approved-domain list, and stores/returns a bounded attributed excerpt with a rights-profile label.
+6. `POST /api/enrich` retrieves one explicitly selected public HTTPS page through Firecrawl and stores/returns a bounded attributed excerpt with a rights-profile label.
 7. Remote MCP exposes `research_products`, `get_research`, and `get_trends`, sharing exactly the REST application logic.
 8. Prisma schema + committed initial migration, Redis atomic rate/budget limits, a transactional workflow outbox, scheduled recovery/retention routes, and structured logging.
 9. SerpApi live provider and a deterministic fixture mode for developer testing (fixture is always marked synthetic).
@@ -68,7 +68,7 @@ Build a Vercel-hosted, API-first market intelligence service that accepts an Ama
 ## 4. Data-access and legal/commercial launch gate
 
 1. Document SerpApi's and Firecrawl's current terms, account quota, intended use, data storage and republishing permissions; third-party access alone does **not** settle underlying marketplace or site rights.
-2. Scrape/enrich only authorized, publicly accessible target pages. Do not bypass restrictions or protections. Firecrawl calls must be opt-in and restricted by approved-domain rules.
+2. Scrape/enrich only authorized, publicly accessible target pages. Do not bypass restrictions or protections. Firecrawl page reads must follow explicit candidate selection; search results never trigger scraping automatically.
 3. Retain only normalized listing metadata required by the product. Avoid raw HTML, product images or unlimited provider payload archiving. Use evidence URL/provider/time to preserve provenance.
 4. Add configurable retention (`OBSERVATION_RETENTION_DAYS`, default proposed 30 for MVP) and a documented deletion task; actual duration must match applicable permission.
 5. Data permission, AI input, storage, reuse and export are separate decisions. Disable export/enrichment until approved.
@@ -85,7 +85,7 @@ Build a Vercel-hosted, API-first market intelligence service that accepts an Ama
 | US-02 | Caller queries research state | Stable job ID, timestamps, source metadata and normalized result list |
 | US-03 | Analyst needs historical change | First snapshot yields `insufficient_history`; later comparable snapshots yield rank/price/review deltas |
 | US-04 | Developer invokes through MCP | Same validation/auth/quota/business behavior as REST; valid MCP transport |
-| US-05 | Operator wants safe enrichment | Only explicit HTTPS URL on approved domain accepted; other hosts rejected |
+| US-05 | Operator wants safe enrichment | Only explicit public HTTPS URLs accepted; local and non-public targets are rejected |
 | US-06 | Provider quota expires | No silent fallback to fabricated data; job fails transparently and can be retried |
 | US-07 | Replayed workflow callback | Does not duplicate job/product observations |
 | US-08 | Team deploys clean project | Required variables set, migration applied once, build succeeds, smoke tests pass |
@@ -145,7 +145,7 @@ Compares successful snapshots for the normalized keyword using the current fixed
 
 ### `POST /api/enrich` (limited P0)
 
-`{ "url": "https://approved-brand.example/about" }` with server-side `APPROVED_ENRICHMENT_DOMAINS`; 422 for unapproved URLs, 429 quota, 502 provider failure. Returns `{ url, retrievedAt, source:"firecrawl", excerpt, truncated:true|false }`. **Does not claim verified Amazon seller-to-manufacturer ownership**.
+`{ "url": "https://manufacturer.example/about" }`; public HTTPS required, 422 for invalid/local URLs, 429 quota, 502 provider failure. Returns `{ url, retrievedAt, source:"firecrawl", excerpt, truncated:true|false }`. **Does not claim verified Amazon seller-to-manufacturer ownership**.
 
 ### `GET, POST /api/mcp`
 
@@ -171,8 +171,8 @@ MCP server must *not* expose arbitrary HTTP fetch, shell, SQL, universal scrapin
 
 ### Firecrawl - public source enrichment
 
-- Use official `firecrawl` Node SDK and `scrape(url, { formats: ['markdown'] })` for explicitly approved public domains. Do not add broad `crawl` by default.
-- URL validation requires HTTPS, rejects IP literals, credentials, and common local/private hostnames, applies the approved-domain suffix allowlist, and requests one page. The final Firecrawl URL is checked against the same approved root before persistence. The SDK buffers its response before the application truncates the stored excerpt to 4,000 characters; the allowlist and final-URL check do not independently prove safe DNS resolution or prevent every upstream redirect behavior. Keep the allowlist restricted to trusted domains and verify Firecrawl controls/terms.
+- Use official `firecrawl` Node SDK and `scrape(url, { formats: ['markdown'] })` for one explicitly selected public HTTPS page. Do not add broad `crawl` by default.
+- URL validation requires HTTPS, rejects IP literals, credentials, and common local/private hostnames, and requests one page. The final Firecrawl URL must also be public HTTPS before persistence. The SDK buffers its response before the application truncates the stored excerpt to 4,000 characters; hostname checks do not independently prove safe DNS resolution or prevent every upstream redirect behavior.
 - Never give untrusted web text authority over internal instructions. Persist only source metadata and approved short excerpts, not unbounded crawl output.
 - Firecrawl does **not** prove supplier or trademark affiliation.
 
@@ -236,7 +236,6 @@ Save **normalized** data: do not write full SerpApi responses to PostgreSQL. Eve
 | `SERPAPI_API_KEY` | live mode | secret from SerpApi; never exported |
 | `SERPAPI_RIGHTS_PROFILE` | live mode | reviewed data-use profile label stored on each live research job |
 | `FIRECRAWL_API_KEY` | `/api/enrich` | secret; omit to disable enrichment |
-| `APPROVED_ENRICHMENT_DOMAINS` | enrichment | comma-separated exact/suffix domain allowlist |
 | `ENRICHMENT_RIGHTS_PROFILE` | enrichment evidence | approved rights/use profile label; required when Firecrawl is enabled |
 | `UPSTASH_REDIS_REST_URL` | quotas and budgets | Upstash HTTPS Redis REST endpoint |
 | `UPSTASH_REDIS_REST_TOKEN` | quotas and budgets | secret |
@@ -284,7 +283,7 @@ PR: `npm ci` -> Prisma validation -> typecheck -> lint -> environment-shape chec
 | Historic data | One run -> `insufficient_history`; two same-query runs -> comparable changes |
 | Auth | no token/incorrect token 401 REST and MCP |
 | Workflow security | unsigned direct POST to workflow denied in production |
-| Firecrawl | approved domain accepted; unknown/private/HTTP URLs rejected |
+| Firecrawl | any public HTTPS domain accepted; private/local/HTTP URLs rejected |
 | Provider errors | 429/5xx propagate safe FAILED status, no fabricated data |
 | Quotas | limits produce 429 and no provider spending |
 | Production | public health 200, token-auth API works, MCP Inspector can list/invoke tools, job completes |

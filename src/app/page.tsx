@@ -6,7 +6,7 @@ const endpoints = [
   { method: 'GET', path: '/api/trends?keyword=…', description: 'Compare compatible saved snapshots.' },
   { method: 'GET', path: '/api/manufacturers?asin=…', description: 'Read latest screened leads, diagnostics, and earlier results without another provider call.' },
   { method: 'POST', path: '/api/manufacturers/search', description: 'Run one bounded Firecrawl search for a saved non-synthetic product and explicit product brief; returns up to five screened leads with evidence status.' },
-  { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from an approved domain or selected candidate.' },
+  { method: 'POST', path: '/api/enrich', description: 'Save an excerpt from a public HTTPS URL or selected candidate.' },
 ];
 
 export default function Home() {

@@ -1,19 +1,19 @@
 import 'server-only';
 import { Firecrawl } from 'firecrawl';
 import { getDb } from './db';
-import { validateEnrichmentUrl, allowlistedRoot } from './enrichment-url-server';
+import { validateEnrichmentUrl } from './enrichment-url';
 import { AppError, errors } from './errors';
 import { classifyManufacturerPageEvidence } from './manufacturer-discovery';
 import { reserveProviderCall } from './rate-limit';
 
 const MAX_EXCERPT_LENGTH = 4_000;
 
-export async function enrichApprovedUrl(
+export async function enrichPublicUrl(
   rawUrl: string,
   association?: { productId: string; candidateId: string; productBrief?: string },
 ) {
   const validated = validateEnrichmentUrl(rawUrl);
-  if (!validated) throw errors.validation('The HTTPS domain is not approved for enrichment.');
+  if (!validated) throw errors.validation('A public HTTPS URL is required for enrichment.');
   const apiKey = process.env.FIRECRAWL_API_KEY;
   const rightsProfile = process.env.ENRICHMENT_RIGHTS_PROFILE?.trim();
   if (!apiKey || !rightsProfile || rightsProfile.length > 120) {
@@ -34,9 +34,7 @@ export async function enrichApprovedUrl(
     });
     const finalUrl = result.metadata?.sourceURL;
     const final = typeof finalUrl === 'string' ? validateEnrichmentUrl(finalUrl) : null;
-    if (!final || allowlistedRoot(final.sourceHost) !== allowlistedRoot(validated.sourceHost)) {
-      throw errors.providerUnavailable();
-    }
+    if (!final) throw errors.providerUnavailable();
     const markdown = typeof result.markdown === 'string'
       ? result.markdown.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim()
       : '';
