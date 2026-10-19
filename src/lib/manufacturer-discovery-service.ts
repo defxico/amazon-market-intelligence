@@ -33,7 +33,7 @@ export async function searchSavedProductManufacturers(asin: string) {
   const requestId = await reserveProviderCall('firecrawl');
   await db.providerUsage.create({ data: { requestId, provider: 'firecrawl' } });
   try {
-    const firecrawl = new Firecrawl({ apiKey, timeoutMs: 40_000, maxRetries: 0 });
+    const firecrawl = new Firecrawl({ apiKey, timeoutMs: 40_000, maxRetries: 1 });
     const candidates = await discoverManufacturerCandidates({
       id: product.id,
       asin: product.asin,

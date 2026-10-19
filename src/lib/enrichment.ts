@@ -22,7 +22,7 @@ export async function enrichApprovedUrl(
   const requestId = await reserveProviderCall('firecrawl');
   await getDb().providerUsage.create({ data: { requestId, provider: 'firecrawl' } });
   try {
-    const firecrawl = new Firecrawl({ apiKey, timeoutMs: 40_000, maxRetries: 0 });
+    const firecrawl = new Firecrawl({ apiKey, timeoutMs: 40_000, maxRetries: 1 });
     const result = await firecrawl.scrape(validated.url.toString(), {
       formats: ['markdown'],
       onlyMainContent: true,
