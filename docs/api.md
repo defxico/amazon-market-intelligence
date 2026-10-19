@@ -46,19 +46,19 @@ Poll `GET /api/research/{jobId}` until `SUCCEEDED`, `FAILED`, or `DISPATCH_FAILE
       "title": "Search result title",
       "url": "https://example.com/product",
       "snippet": "Search result excerpt",
-      "source": "firecrawl.search",
+      "source": "firecrawl.search.manufacturer-v1",
       "relationshipVerified": false,
       "firstSeenAt": "2026-10-19T12:00:00.000Z",
       "lastSeenAt": "2026-10-19T12:00:00.000Z"
     }
   ],
-  "warning": "Search-result pages are candidates; their relationship to this ASIN is unverified."
+      "warning": "Search-result pages mention manufacturing capabilities; company identity and product fit are unverified."
 }
 ```
 
-`POST /api/manufacturers/search` is the explicit paid operation. It accepts `{ "asin": "B00MNXGSAI" }`, requires a saved product with a successful non-synthetic observation, and returns at most five Firecrawl web results. It does not scrape result pages. The shared Firecrawl daily budget and per-client rate limit apply.
+`POST /api/manufacturers/search` is the explicit paid operation. It accepts `{ "asin": "B00MNXGSAI" }`, requires a saved product with a successful non-synthetic observation, and uses the product title without its brand or ASIN to search for similar-product private-label, OEM, and contract manufacturing capacity. It excludes common retail marketplace domains and results without manufacturing signals, then returns up to five unverified leads. It does not scrape result pages. The shared Firecrawl daily budget and per-client rate limit apply.
 
-The response includes the same candidate fields plus `providerUsageRequestId`, `creditsUsed`, `source`, `rightsProfile`, a warning, and the API `requestId`. `creditsUsed` is the observed change in the Firecrawl account's remaining-credit count and may be `null` if the provider usage snapshots are unavailable or changed concurrently. The provider request uses one attempt; it is not automatically retried.
+The response includes the same candidate fields plus `providerUsageRequestId`, `creditsUsed`, `source`, `rightsProfile`, a warning, and the API `requestId`. New candidates use source `firecrawl.search.manufacturer-v1`; earlier records may retain `firecrawl.search` and were not screened by this filter. New candidates match manufacturing terms in search titles, snippets, or URLs; this does not confirm a real factory, its production capacity, or its fit for the selected product. `creditsUsed` is the observed change in the Firecrawl account's remaining-credit count and may be `null` if the provider usage snapshots are unavailable or changed concurrently. The provider request uses one attempt; it is not automatically retried.
 
 ## Errors
 

@@ -15,7 +15,7 @@ export type ManufacturerCandidateDraft = {
   name: string;
   url: string;
   snippet: string;
-  source: 'firecrawl.search';
+  source: 'firecrawl.search.manufacturer-v1';
   relationshipVerified: false;
 };
 
@@ -54,7 +54,7 @@ export function serializeSavedProductCandidates(product: {
       firstSeenAt: candidate.firstSeenAt.toISOString(),
       lastSeenAt: candidate.lastSeenAt.toISOString(),
     })),
-    warning: 'Search-result pages are candidates; their relationship to this ASIN is unverified.',
+    warning: 'Search-result pages mention manufacturing capabilities; company identity and product fit are unverified.',
   };
 }
 
@@ -68,10 +68,33 @@ export function manufacturerSearchIsEnabled(value: string | undefined): boolean 
   return value === 'true';
 }
 
-export function manufacturerSearchQuery(product: SavedProductForDiscovery): string {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function productDescription(product: SavedProductForDiscovery): string {
+  let title = cleanText(product.title, 350);
   const brand = cleanText(product.brand, 100);
-  const title = cleanText(product.title, 350);
-  return [brand, title, product.asin, 'manufacturer'].filter(Boolean).join(' ').slice(0, 500);
+  if (brand) title = title.replace(new RegExp(escapeRegExp(brand), 'ig'), ' ');
+  if (product.asin) title = title.replace(new RegExp(escapeRegExp(product.asin), 'ig'), ' ');
+  return cleanText(title, 350) || 'a similar product';
+}
+
+export function manufacturerSearchQuery(product: SavedProductForDiscovery): string {
+  return `Find private label, OEM, or contract manufacturers capable of making products similar to ${productDescription(product)}`.slice(0, 500);
+}
+
+const RETAIL_DOMAINS = ['walmart.com', 'target.com', 'ebay.com', 'etsy.com', 'temu.com', 'aliexpress.com'];
+
+function isRetailResult(url: string): boolean {
+  const hostname = new URL(url).hostname.toLowerCase();
+  return /(^|\.)amazon\.[a-z.]+$/.test(hostname)
+    || RETAIL_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+}
+
+function advertisesManufacturingCapacity(name: string, url: string, snippet: string): boolean {
+  return /\b(?:private[-\s]label|white[-\s]label|contract[-\s]manufactur(?:er|ing)|co[-\s]?(?:manufactur(?:er|ing)|pack(?:er|ing))|OEM|ODM|manufacturing\s+(?:services|capabilities)|custom\s+manufacturing|manufactur(?:e|es|ing)\s+(?:products?\s+for\s+(?:brands?|customers?)|for\s+(?:brands?|customers?)))\b/i
+    .test(`${name} ${url} ${snippet}`);
 }
 
 export async function discoverManufacturerCandidates(
@@ -97,13 +120,14 @@ export async function discoverManufacturerCandidates(
     const snippet = cleanText(record.description, 2_000);
     if (!validated || !name || !snippet) continue;
     const url = validated.url.toString();
+    if (isRetailResult(url) || !advertisesManufacturingCapacity(name, url, snippet)) continue;
     if (uniqueUrls.has(url)) continue;
     uniqueUrls.add(url);
     candidates.push({
       name,
       url,
       snippet,
-      source: 'firecrawl.search',
+      source: 'firecrawl.search.manufacturer-v1',
       relationshipVerified: false,
     });
   }

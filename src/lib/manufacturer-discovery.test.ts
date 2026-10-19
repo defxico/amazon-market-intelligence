@@ -29,30 +29,48 @@ test('filters invalid and non-public result URLs', async () => {
       { title: 'HTTP result', url: 'http://maker.example/item', description: 'Snippet' },
       { title: 'Private result', url: 'https://localhost/item', description: 'Snippet' },
       { title: 'Credential result', url: 'https://user:pass@maker.example/item', description: 'Snippet' },
-      { title: 'Valid result', url: 'https://maker.example/item', description: 'Snippet' },
+      { title: 'Protein Bar Manufacturer', url: 'https://maker.example/item', description: 'Contract manufacturing for similar nutrition bars.' },
     ],
   }));
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].url, 'https://maker.example/item');
 });
 
-test('deduplicates URLs and omits scrape options from the search call', async () => {
+test('searches for similar-product manufacturing capacity without the competing brand or ASIN', async () => {
   let receivedOptions: unknown;
   const candidates = await discoverManufacturerCandidates(realProduct, async (query, options) => {
-    assert.match(query, /B000000001/);
-    assert.match(query, /manufacturer/i);
+    assert.match(query, /private label/i);
+    assert.match(query, /OEM/i);
+    assert.match(query, /contract manufacturer/i);
+    assert.match(query, /Protein Bar Variety Pack/i);
+    assert.doesNotMatch(query, /Example Nutrition|B000000001/i);
     receivedOptions = options;
     return {
       web: [
-        { title: 'Maker', url: 'https://maker.example/item#details', description: 'Found snippet' },
-        { title: 'Maker duplicate', url: 'https://maker.example/item', description: 'Duplicate snippet' },
+        { title: 'Private Label Protein Bar Manufacturer', url: 'https://maker.example/capabilities#details', description: 'Contract manufacturing for protein bars.' },
+        { title: 'Duplicate contract manufacturing', url: 'https://maker.example/capabilities', description: 'Duplicate private label capability.' },
       ],
     };
   });
   assert.deepEqual(receivedOptions, { limit: 5, sources: ['web'] });
   assert.equal(candidates.length, 1);
-  assert.equal(candidates[0].url, 'https://maker.example/item');
+  assert.equal(candidates[0].url, 'https://maker.example/capabilities');
+  assert.equal(candidates[0].source, 'firecrawl.search.manufacturer-v1');
   assert.equal(candidates[0].relationshipVerified, false);
+});
+
+test('keeps manufacturing-capability pages and drops stores and product listings', async () => {
+  const candidates = await discoverManufacturerCandidates(realProduct, async () => ({
+    web: [
+      { title: 'Protein bars on Amazon', url: 'https://www.amazon.com/dp/B000000001', description: 'Buy protein bars with fast shipping.' },
+      { title: 'Protein Bar Store', url: 'https://shop.example/protein-bar', description: 'Shop protein bars and compare flavors.' },
+      { title: 'Protein Bar Product Details', url: 'https://food.example/products/protein-bar', description: 'Manufacturer: Acme Foods. Buy protein bars online.' },
+      { title: 'Protein Bar Manufacturer', url: 'https://maker.example/private-label-bars', description: 'Private label and contract manufacturing for protein bars.' },
+      { title: 'Protein Bar Guide', url: 'https://guide.example/protein-bars', description: 'A list of popular protein bars and their reviews.' },
+    ],
+  }));
+
+  assert.deepEqual(candidates.map(({ url }) => url), ['https://maker.example/private-label-bars']);
 });
 
 test('propagates a provider failure', async () => {

@@ -65,7 +65,7 @@ const handler = createMcpHandler((server) => {
 
   server.registerTool('search_saved_product_candidates', {
     title: 'Search candidates for a saved product',
-    description: 'Use one bounded Firecrawl web search for a saved, successfully observed non-synthetic Amazon product. Returns at most five unverified candidate pages; this operation consumes the shared Firecrawl budget.',
+    description: 'Find potential private-label, OEM, or contract manufacturers for products similar to a saved, successfully observed non-synthetic Amazon product. Uses one bounded Firecrawl search, excludes common retail marketplaces and pages without manufacturing signals, returns at most five unverified leads, and consumes the shared Firecrawl budget.',
     inputSchema: manufacturerSearchInput,
   }, async ({ asin }, context) => {
     try {
@@ -79,7 +79,7 @@ const handler = createMcpHandler((server) => {
 
   server.registerTool('get_saved_product_candidates', {
     title: 'Read saved product candidates',
-    description: 'Read up to five already persisted Firecrawl search candidates for a saved ASIN without making another provider request.',
+    description: 'Read up to five already persisted potential manufacturer leads for a saved ASIN without making another provider request.',
     inputSchema: manufacturerSearchInput,
   }, async ({ asin }, context) => {
     try {
@@ -92,7 +92,7 @@ const handler = createMcpHandler((server) => {
   });
 }, {
   serverInfo: { name: 'amazon-market-intelligence', version: '2.0.0' },
-  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Use search_saved_product_candidates only after selecting a saved, non-synthetic product because it consumes Firecrawl budget. Use get_saved_product_candidates to reopen saved results without another provider request. Do not treat synthetic fixture data as real research. Candidate pages are not verified manufacturers. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
+  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Select a saved, non-synthetic product before using search_saved_product_candidates; it consumes Firecrawl budget and searches for similar-product private-label, OEM, or contract manufacturing capacity. Results only advertise manufacturing signals in search text; review each site to verify the company and product fit. Use get_saved_product_candidates to reopen saved leads without another provider request. Do not treat synthetic fixture data as real research. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
   verboseLogs: false,
 });
 
