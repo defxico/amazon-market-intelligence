@@ -74,7 +74,7 @@ curl -i -X POST http://localhost:3000/api/research \
   -d '{"keyword":"portable blender","marketplace":"amazon.com","page":1,"limit":10}'
 ```
 
-Poll the returned `statusUrl` until `SUCCEEDED` or a terminal failure. The fixture job is synthetic and is clearly marked as such. A second successful `page=1`, `limit=10` observation is needed before trends can compare snapshots.
+Poll the returned `statusUrl` until `SUCCEEDED` or a terminal failure. The fixture job is synthetic and is clearly marked as such. Trend comparisons require two compatible, successful, non-synthetic snapshots; fixture data returns no trend signals.
 
 ## Production release
 

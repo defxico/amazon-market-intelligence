@@ -20,6 +20,20 @@ export async function getTrends(keyword: string, clientId: string) {
     take: 100,
     include: { observations: { include: { product: true } } },
   });
+  if (jobs[0]?.synthetic) {
+    return {
+      keyword,
+      status: 'insufficient_history' as const,
+      historyCount: jobs.length,
+      methodologyVersion: 'rank_proxy_v1',
+      confidence: 'low' as const,
+      source: jobs[0].source,
+      synthetic: true,
+      comparisonWindow: null,
+      signals: [],
+      note: 'Synthetic fixture snapshots cannot support trend comparisons. Enable approved real data collection to compare real snapshots.',
+    };
+  }
   if (jobs.length < 2) {
     return {
       keyword,

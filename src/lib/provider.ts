@@ -109,7 +109,11 @@ async function markUsage(requestId: string, succeeded: boolean, errorCode?: stri
 }
 
 export async function fetchListings(input: SearchInput, source: string, jobId: string): Promise<Listing[]> {
-  if (source === 'fixture') return fixtureListings.slice(0, input.limit);
+  if (source === 'fixture') {
+    const keyword = input.keyword.trim().toLowerCase().replace(/\s+/g, ' ');
+    if ((keyword !== 'blender' && keyword !== 'portable blender') || input.page !== 1) return [];
+    return fixtureListings.slice(0, input.limit);
+  }
   if (source !== 'serpapi') throw new AppError('INTERNAL_ERROR', 'The saved provider is invalid.', 500);
 
   const apiKey = requiredEnv('SERPAPI_API_KEY');

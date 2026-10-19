@@ -51,7 +51,7 @@ const handler = createMcpHandler((server) => {
 
   server.registerTool('get_trends', {
     title: 'Compare saved observations',
-    description: 'Compare compatible Amazon.com snapshots. Rank, price and review changes are directional sample signals, not verified sales or demand.',
+    description: 'Compare compatible real Amazon.com snapshots. Synthetic fixture snapshots return no trend signals. Rank, price and review changes are directional sample signals, not verified sales or demand.',
     inputSchema: z.object({ keyword: trendKeywordInput }),
   }, async ({ keyword }, context) => {
     try {
@@ -63,7 +63,7 @@ const handler = createMcpHandler((server) => {
   });
 }, {
   serverInfo: { name: 'amazon-market-intelligence', version: '2.0.0' },
-  instructions: 'Use research_products to queue bounded observations, then get_research to poll. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
+  instructions: 'Use research_products to queue bounded observations, then get_research to poll. Do not treat synthetic fixture data as real research. get_trends reports sample rank proxies only; do not describe these as sales, revenue, demand, or market share.',
   verboseLogs: false,
 });
 
