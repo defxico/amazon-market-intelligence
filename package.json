@@ -29,7 +29,7 @@
     "@upstash/redis": "^1.39.0",
     "@upstash/workflow": "^1.4.0",
     "decimal.js": "^10.6.0",
-    "firecrawl": "^4.46.0",
+    "firecrawl": "^4.50.0",
     "mcp-handler": "^2.3.0",
     "next": "16.4.2",
     "pg": "^8.23.1",
